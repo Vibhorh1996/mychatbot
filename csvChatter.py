@@ -22,7 +22,7 @@ os.environ['OPENAI_API_KEY'] = ''
 documents = SimpleDirectoryReader('data').load_data()
 index = GPTSimpleVectorIndex.from_documents(documents)
 
-while True:
+while True: 
     prompt = input("write your question:")
     response = index.query(prompt)
     print(response)
