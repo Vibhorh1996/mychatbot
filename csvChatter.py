@@ -11,7 +11,7 @@ from llama_index import GPTSimpleVectorIndex, SimpleDirectoryReader
 #loader = SimpleCSVReader()
 #documents = loader.load_data(file=Path('./Methane_final.csv'))
 
-os.environ['OPENAI_API_KEY'] = ''
+os.environ['OPENAI_API_KEY'] = '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'
 
 
 # Read from a local file
@@ -23,7 +23,7 @@ documents = SimpleDirectoryReader('data').load_data()
 index = GPTSimpleVectorIndex.from_documents(documents)
 
 while True:
-    prompt = input("Show me top 5 countries with high emmissions")
+    prompt = input("write your question:")
     response = index.query(prompt)
     print(response)
 
