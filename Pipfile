@@ -5,6 +5,8 @@ name = "pypi"
 
 [packages]
 streamlit = "*"
+streamlit_chat = "*"
+llama_index = "*"
 
 [dev-packages]
 
