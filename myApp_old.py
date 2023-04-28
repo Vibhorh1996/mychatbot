@@ -1,18 +1,16 @@
 import streamlit as st
 from streamlit_chat import message
 import pandas as pd
-# from llama_index.indices.struct_store import GPTPandasIndex
-# from llama_index import SimpleDirectoryReader, GPTSimpleVectorIndex
+from llama_index.indices.struct_store import GPTPandasIndex
+from llama_index import SimpleDirectoryReader, GPTSimpleVectorIndex
 import os
 import json
-from langchain.agents import create_pandas_dataframe_agent
-from langchain.llms import OpenAI
 
 
 # setting page title and header
-st.set_page_config(page_title="Data Chat", page_icon=':robot_face:')
-st.markdown("<h1 stype='text-align:center;'>Data Chat</h1>", unsafe_allow_html=True)
-st.markdown("<h2 stype='text-align:center;'>A Chatbot for conversing with your data</h2>", unsafe_allow_html=True)
+st.set_page_config(page_title="JazzHR", page_icon=':robot_face:')
+st.markdown("<h1 stype='text-align:center;'>JazzHR</h1>", unsafe_allow_html=True)
+st.markdown("<h2 stype='text-align:center;'>A HR Analytics Conversational AI </h2>", unsafe_allow_html=True)
 
 # set API Key
 key = st.text_input('OpenAI API Key','',type='password')
@@ -111,10 +109,9 @@ response_container = st.container()
 # container for text box
 container = st.container()
 
-# documents = SimpleDirectoryReader('data/dataset').load_data()
-# index = GPTSimpleVectorIndex.from_documents(documents)
+documents = SimpleDirectoryReader('data/dataset').load_data()
+index = GPTSimpleVectorIndex.from_documents(documents)
 
-agent = create_pandas_dataframe_agent(OpenAI(temperature=0),df, verbose=True)
 
 
 
@@ -125,14 +122,11 @@ with container:
         submit_button = st.form_submit_button(label='Send')
 
     if submit_button and user_input:
-        # output, last_token_count = generate_response(index,user_input)
-        output = agent.run(user_input)
-        st.write(output)
-        #total_tokens = last_token_count
-        total_tokens = 0
+        output, last_token_count = generate_response(index,user_input)
+        #st.write(output)
+        total_tokens = last_token_count
         st.session_state['past'].append(user_input)
-        # st.session_state['generated'].append(output.response)
-        st.session_state['generated'].append(output)
+        st.session_state['generated'].append(output.response)
         st.session_state['model_name'].append(model_name)
         st.session_state['total_tokens'].append(total_tokens)
 
