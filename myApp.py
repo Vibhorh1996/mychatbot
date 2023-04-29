@@ -105,7 +105,7 @@ if 'past' not in st.session_state:
 
 if 'messages' not in st.session_state:
     st.session_state['messages']=[
-        {"role":"JazzHR","content":"You are a helpful bot."}
+        {"role":"DataChat","content":"You are a helpful bot."}
     ]
 
 if 'model_name' not in st.session_state:
@@ -166,7 +166,7 @@ def generate_response(index,prompt):
     st.session_state['messages'].append({"role":"user","content":prompt})
 
     response = index.query(prompt)
-    st.session_state['messages'].append({"role":"JazzHR","content":response})
+    st.session_state['messages'].append({"role":"DataChat","content":response})
 
     #last_token_usage = index.llm_predictor.last_token_usage
     last_token_usage = 0.0
