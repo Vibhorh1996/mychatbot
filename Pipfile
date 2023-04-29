@@ -7,6 +7,15 @@ name = "pypi"
 streamlit = "*"
 streamlit_chat = "*"
 llama_index = "*"
+python-dotenv = "*"
+openai = "*"
+pinecone-client = "*"
+langchain = "*"
+pypdf = "*"
+tiktoken = "*"
+bs4 = "*"
+faiss-cpu = "*"
+unstructured = "*"
 
 [dev-packages]
 
