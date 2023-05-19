@@ -18,7 +18,6 @@ faiss-cpu = "*"
 unstructured = "*"
 pysummarization = "*"
 spacy = "*"
-spacy[en_core_web_sm]
 [dev-packages]
 
 [requires]
