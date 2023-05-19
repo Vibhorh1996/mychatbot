@@ -17,12 +17,10 @@ from langchain.vectorstores import FAISS as BaseFAISS
 from langchain.chat_models import ChatOpenAI
 from langchain.schema import AIMessage, HumanMessage, SystemMessage
 from langchain.document_loaders import (
-    PyPDFLoader,
     CSVLoader,
     UnstructuredWordDocumentLoader,
     WebBaseLoader,
 )
-import re
 
 
 def count_tokens(text, model="gpt-3.5-turbo"):
@@ -83,97 +81,123 @@ class URLHandler:
 
 
 # setting page title and header
+
 st.set_page_config(page_title="Data Chat", page_icon=':robot_face:')
 st.markdown("<h1 stype='text-align:center;'>Data Chat</h1>", unsafe_allow_html=True)
 st.markdown("<h2 stype='text-align:center;'>A Chatbot for conversing with your data</h2>", unsafe_allow_html=True)
 
+
 # set API Key
+
 key = st.text_input('OpenAI API Key', '', type='password')
 os.environ['OPENAPI_API_KEY'] = key
 
+
 # initialize session state variables
+
 if 'generated' not in st.session_state:
-    st.session_state['generated'] = {}
+    st.session_state['generated'] = []
 
 if 'past' not in st.session_state:
-    st.session_state['past'] = {}
+    st.session_state['past'] = []
 
 if 'messages' not in st.session_state:
-    st.session_state['messages'] = {
-        "DataChat": "You are a helpful bot."
+    st.session_state['messages'] = []
+
+if 'generated' not in st.session_state:
+    st.session_state['generated'] = []
+
+
+# load chat model
+
+def load_chat_model():
+    agent = create_pandas_dataframe_agent()
+    gpt_model = OpenAIEmbeddings()
+    faiss_model = FAISS()
+    document_loaders = {
+        "CSV": CSVLoader,
+        "PDF": PyPDFLoader(file_path_or_url),
+        "Web Page": WebBaseLoader,
     }
+    document_loaders = {
+        key: document_loaders[key]()
+        for key in document_loaders
+    }
+    return ChatOpenAI(
+        agent=agent,
+        gpt_model=gpt_model,
+        faiss_model=faiss_model,
+        document_loaders=document_loaders,
+    )
 
-if 'model_name' not in st.session_state:
-    st.session_state['model_name'] = {}
 
-if 'cost' not in st.session_state:
-    st.session_state['cost'] = {}
+# process user input and generate response
 
-if 'total_cost' not in st.session_state:
-    st.session_state['total_cost'] = 0
+def generate_response(user_input):
+    if user_input:
+        user_input = user_input.strip()
+        st.session_state['messages'].append(HumanMessage(content=user_input))
 
-if 'selected_file' not in st.session_state:
-    st.session_state['selected_file'] = None
+        document_type = st.session_state['document_type']
+        if document_type:
+            document_loader = st.session_state['document_loaders'][document_type]
 
-if 'document_index' not in st.session_state:
-    st.session_state['document_index'] = None
-
-# document loaders
-document_loaders = {
-    "PDF": PyPDFLoader(),
-    "CSV": CSVLoader(),
-    "Web Page": WebBaseLoader(),
-}
-
-# select document type
-document_type = st.sidebar.selectbox("Select Document Type", list(document_loaders.keys()))
-
-# document upload
-uploaded_files = st.sidebar.file_uploader("Upload files", accept_multiple_files=True)
-
-# load and index documents
-if uploaded_files:
-    document_loader = document_loaders[document_type]
-
-    if document_type == "Web Page":
-        urls = [f.name for f in uploaded_files]
-        links = URLHandler.extract_links_from_websites(urls)
-        for link in links:
-            document_loader.add_document(link)
-    else:
-        for uploaded_file in uploaded_files:
-            content = uploaded_file.read()
-            document_loader.add_document(content)
-
-    # process and index the documents
-    document_loader.process_documents()
-    index = document_loader.index_documents()
-
-    # store the index for later use
-    st.session_state['document_index'] = index
-
-# query input
-query = st.text_input("Enter your query")
-
-# query execution
-if st.button("Query"):
-    index = st.session_state['document_index']
-
-    if index is not None:
-        result = index.query(query)
-
-        st.markdown("<h3>Results:</h3>", unsafe_allow_html=True)
-        for doc_id, score in result:
-            st.write(f"**Document ID**: {doc_id}, **Score**: {score}")
-
-            # get the document content based on the document type
             if document_type == "Web Page":
-                content = document_loader.get_document_by_url(doc_id)
-            else:
-                content = document_loader.get_document_by_id(doc_id)
+                websites = document_loader.websites
+                links = URLHandler.extract_links_from_websites(websites)
+                document_loader.websites = links
 
-            st.write(f"**Content**: {content}")
-    else:
-        st.write("Please upload documents first.")
+            document_loader.refresh_documents()
+            messages = st.session_state['messages']
+            response = chat_model.process_message_batch(messages)
+
+            for message in response:
+                if isinstance(message, AIMessage):
+                    st.session_state['generated'].append(message.content)
+                elif isinstance(message, SystemMessage):
+                    st.write(f"[System]: {message.content}")
+
+            st.session_state['messages'] = []
+            st.session_state['generated'] = []
 
 
+# render user interface
+
+st.sidebar.header('Configuration')
+
+document_type = st.sidebar.selectbox('Document Type', ['CSV', 'PDF', 'Web Page'])
+st.session_state['document_type'] = document_type
+
+if document_type:
+    document_loader = st.session_state['document_loaders'].get(document_type)
+    if document_loader is None:
+        document_loader = document_loaders[document_type]()
+        st.session_state['document_loaders'][document_type] = document_loader
+
+    if document_type == "CSV":
+        csv_files = st.sidebar.file_uploader('Upload CSV', type='csv', accept_multiple_files=True)
+        if csv_files:
+            document_loader.csv_files = csv_files
+            generate_response('')
+
+    elif document_type == "PDF":
+        pdf_files = st.sidebar.file_uploader('Upload PDF', type='pdf', accept_multiple_files=True)
+        if pdf_files:
+            document_loader.file_path_or_url = pdf_files[0]
+            generate_response('')
+
+    elif document_type == "Web Page":
+        websites = st.sidebar.text_area("Enter Website URLs (one per line)")
+        document_loader.websites = websites.strip().split('\n')
+        generate_response('')
+
+
+st.subheader('Chat')
+
+user_input = st.text_input('You:', '')
+
+if st.button('Query'):
+    generate_response(user_input)
+
+for generated in st.session_state['generated']:
+    st.write(f"[AI]: {generated}")
