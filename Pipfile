@@ -16,6 +16,7 @@ tiktoken = "*"
 bs4 = "*"
 faiss-cpu = "*"
 unstructured = "*"
+text_summarizer = "*"
 [dev-packages]
 
 [requires]
