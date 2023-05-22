@@ -3,6 +3,7 @@ import streamlit as st
 import tiktoken
 import faiss
 import pypdf
+import PyPDF2
 from langdetect import detect
 from iso639 import languages
 
@@ -10,13 +11,17 @@ from iso639 import languages
 index = faiss.IndexFlatL2(768)
 
 # Function to tokenize PDF content
-def tokenize_pdf_content(pdf_file):
-    with open(pdf_file, 'rb') as file:
-        reader = pypdf.PdfReader(file)
-        content = ''
-        for page in reader.pages:
-            content += page.extract_text()
-        return tiktoken.tokenize(content)
+def tokenize_pdf_content(uploaded_file):
+    pdf_reader = PyPDF2.PdfFileReader(uploaded_file)
+    num_pages = pdf_reader.numPages
+    content = []
+
+    for page_num in range(num_pages):
+        page = pdf_reader.getPage(page_num)
+        text = page.extractText()
+        content.append(text)
+
+    return content
 
 # Function to index PDF files
 def index_pdf_files(pdf_files):
