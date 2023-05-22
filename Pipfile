@@ -17,10 +17,6 @@ bs4 = "*"
 faiss-cpu = "*"
 unstructured = "*"
 pysummarization = "*"
-spacy = "*"
-text-summarizer = "*"
-nltk = "iso-639" 
-lang-detect = "*"
 [dev-packages]
 
 [requires]
