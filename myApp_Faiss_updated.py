@@ -140,7 +140,7 @@ def save_uploadedfile(uploadedfile):
 # Define a function to summarize a PDF file using text-summarizer library 
 def summarize_pdf(file_path):
     # Import text-summarizer library 
-    from text_summarizer import summarizer
+    from text_summarizer import Summarizer
 
     # Open the PDF file and extract the text using pdfminer.six library 
     from pdfminer.high_level import extract_text
@@ -150,7 +150,8 @@ def summarize_pdf(file_path):
     print(text)
 
     # Create an instance of the summarizer object using text-summarizer library 
-    summary = summarizer.Summarizer()
+    #summary = summarizer.Summarizer()
+    summary = Summarizer()
 
     # Call the summarize method of the summarizer object with the extracted text as input and get the summary as output 
     result = summary.summarize(text)
