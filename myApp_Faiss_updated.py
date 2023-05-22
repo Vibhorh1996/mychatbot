@@ -137,19 +137,30 @@ def save_uploadedfile(uploadedfile):
         f.write(uploadedfile.getbuffer())
     return "data/dataset/" + uploadedfile.name
 
-# Define a function to summarize a PDF file using pysummarization or text-summarizer library 
+# Define a function to summarize a PDF file using text-summarizer library 
 def summarize_pdf(file_path):
-    # Open the PDF file and extract the text using pdfminer2 or pdfminer.six library 
+    # Import text-summarizer library 
+    from text_summarizer import summarizer
+
+    # Open the PDF file and extract the text using pdfminer.six library 
+    from pdfminer.high_level import extract_text
     text = extract_text(file_path)
 
-    # Create an instance of the summarizer object using pysummarization or text-summarizer library 
-    auto_abstractor = AutoAbstractor() # You can also use TextSummarizer() from text-summarizer library
- 
-    # Call the summarize method of the summarizer object with the extracted text as input and get the summary as output 
-    result_dict = auto_abstractor.summarize(text)
+    # Print the text variable to check if it contains the text from the PDF file 
+    print(text)
 
-    # Return the summary as output 
-    return result_dict["summarize_result"]
+    # Create an instance of the summarizer object using text-summarizer library 
+    summary = summarizer.Summarizer()
+
+    # Call the summarize method of the summarizer object with the extracted text as input and get the summary as output 
+    result = summary.summarize(text)
+
+    # Print the result variable to check if it contains a summary of the text 
+    print(result)
+
+    # Return the result as output 
+    return result
+
 
 # Define a function to get the loader object based on the file path or url using mimetypes and langchain.document_loaders modules 
 def get_loader(file_path_or_url):
