@@ -240,7 +240,10 @@ summaries = []
 # Loop through the uploaded files and check if they are PDF files. If yes, call the summarize_pdf function with the file path as input and get the summary as output. Append the summary to the summaries list. 
 for uploaded_file in uploaded_files:
     if uploaded_file.type == "application/pdf":
-        summary = summarize_pdf(uploaded_path)
+         # Get the file path of the uploaded_file using save_uploadedfile function
+        file_path = save_uploadedfile(uploaded_file)
+        # Call the summarize_pdf function with the file_path as input
+        summary = summarize_pdf(file_path)
         summaries.append(summary)
 
 # Let user choose a model from GPT-3.5 or GPT-4 using streamlit sidebar radio 
