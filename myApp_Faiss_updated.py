@@ -137,30 +137,28 @@ def save_uploadedfile(uploadedfile):
         f.write(uploadedfile.getbuffer())
     return "data/dataset/" + uploadedfile.name
 
-# Define a function to summarize a PDF file using text-summarizer library 
+# Define a function to summarize a PDF file using gensim library
 def summarize_pdf(file_path):
-    # Import text-summarizer library 
-    from text_summarizer import summarizer
 
-    # Open the PDF file and extract the text using pdfminer.six library 
-    from pdfminer.high_level import extract_text
+# Import summarization module from gensim library
+    from gensim.summarization import summarize
+
+# Open the PDF file and extract the text using pdfminer.six library
+    from pdfminer.high_level import extract_text 
     text = extract_text(file_path)
 
-    # Print the text variable to check if it contains the text from the PDF file 
+#Print the text variable to check if it contains the text from the PDF file
     print(text)
 
-    # Create an instance of the summarizer object using text-summarizer library 
-    summary = summarizer.Summarizer()
+#Call the summarize function from gensim with the extracted text as input and get the summary as output
+#The ratio parameter determines the proportion of sentences in the summary
+    result = summarize(text, ratio=0.2)
 
-    # Call the summarize method of the summarizer object with the extracted text as input and get the summary as output 
-    result = summary.summarize(text)
-
-    # Print the result variable to check if it contains a summary of the text 
+#Print the result variable to check if it contains a summary of the text
     print(result)
 
-    # Return the result as output 
+#Return the result as output
     return result
-
 
 # Define a function to get the loader object based on the file path or url using mimetypes and langchain.document_loaders modules 
 def get_loader(file_path_or_url):
