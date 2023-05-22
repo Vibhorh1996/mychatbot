@@ -21,7 +21,7 @@ text_summarizer = "*"
 Summarizer = "*"
 nltk = "3.6.5"
 iso-639 = "0.4.5"
-lang-detect = "1.0.9"
+langdetect = "1.0.9"
 [dev-packages]
 
 [requires]
