@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from text_summarizer.summarizer import Summarizer
+from text_summarizer import Summarizer
 from urllib.parse import urljoin, urlsplit
 from pdfminer.high_level import extract_text
 from langchain.agents import create_pandas_dataframe_agent
