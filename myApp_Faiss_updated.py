@@ -2,7 +2,7 @@
 import streamlit as st
 from streamlit_chat import message
 import pandas as pd
-from text_summarizer import summarizer
+from text_summarizer import *
 import os
 import json
 import pickle
