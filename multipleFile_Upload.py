@@ -13,7 +13,7 @@ index = faiss.IndexFlatL2(768)
 # Function to tokenize PDF content
 def tokenize_pdf_content(uploaded_file):
     pdf_reader = PyPDF2.PdfReader(uploaded_file)
-    num_pages = pdf_reader.numPages
+    num_pages = len(pdf_reader.pages)
     content = []
 
     for page_num in range(num_pages):
