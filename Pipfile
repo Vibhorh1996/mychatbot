@@ -16,7 +16,6 @@ tiktoken = "*"
 bs4 = "*"
 faiss-cpu = "*"
 unstructured = "*"
-pysummarization = "*"
 [dev-packages]
 
 [requires]
