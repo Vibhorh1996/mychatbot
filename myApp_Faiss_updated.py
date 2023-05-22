@@ -141,7 +141,7 @@ def save_uploadedfile(uploadedfile):
 # Define a function to summarize a PDF file using text-summarizer library 
 def summarize_pdf(file_path):
     # Import text-summarizer library 
-    # from text_summarizer import summarizer
+    from text_summarizer import *
 
     # Open the PDF file and extract the text using pdfminer.six library 
     from pdfminer.high_level import extract_text
