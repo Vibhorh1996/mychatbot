@@ -18,6 +18,7 @@ faiss-cpu = "*"
 unstructured = "*"
 pysummarization = "*"
 text_summarizer = "*"
+Summarizer = "*"
 [dev-packages]
 
 [requires]
