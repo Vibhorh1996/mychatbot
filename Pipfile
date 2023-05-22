@@ -20,7 +20,7 @@ pysummarization = "*"
 spacy = "*"
 text-summarizer = "*"
 nltk = "iso-639" 
-lang-detect = “*”
+lang-detect = "*"
 [dev-packages]
 
 [requires]
