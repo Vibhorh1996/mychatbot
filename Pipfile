@@ -15,6 +15,9 @@ textract = "*"
 wikipedia-api = "*"
 langchain = "1.0.0"
 text_summarizer = "*"
+pdfminer.six = "*"
+tiktoken = "*"
+
 
 [dev-packages]
 
