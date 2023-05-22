@@ -1,18 +1,20 @@
 [[source]]
+name = "pypi"
 url = "https://pypi.org/simple"
 verify_ssl = true
-name = "pypi"
 
 [packages]
-streamlit = "*"
-tiktoken = "*"
-faiss-cpu = "*"
-pypdf = "*"
-PyPDF2 = "*"
-langdetect = "1.0.9"
-iso-639 = "0.4.5"
+beautifulsoup4 = "*"
+numpy = "*"
+pandas = "*"
+python-docx = "*"
+requests = "*"
+scikit-learn = "*"
+sumy = "*"
+textract = "*"
+wikipedia-api = "*"
 
 [dev-packages]
 
 [requires]
-python_version = "3.9"
+python_version = "3.8"
