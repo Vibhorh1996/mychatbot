@@ -8,6 +8,7 @@ streamlit = "*"
 tiktoken = "*"
 faiss-cpu = "*"
 pypdf = "*"
+PyPDF2 = "*"
 langdetect = "1.0.9"
 iso-639 = "0.4.5"
 
