@@ -151,7 +151,7 @@ def summarize_pdf(file_path):
     print(text)
 
     # Create an instance of the summarizer object using text-summarizer library 
-    summary = summarizer.Summarizer()
+    summary = summarizer.summarizer()
     #summary = summarizer()
 
     # Call the summarize method of the summarizer object with the extracted text as input and get the summary as output 
