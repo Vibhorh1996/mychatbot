@@ -18,7 +18,7 @@ def tokenize_pdf_content(uploaded_file):
 
     for page_num in range(num_pages):
         page = pdf_reader.pages[page_num]
-        text = page.extractText()
+        text = page.extract_text()
         content.append(text)
 
     return content
