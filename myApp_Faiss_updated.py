@@ -2,7 +2,6 @@
 import streamlit as st
 from streamlit_chat import message
 import pandas as pd
-import text_summarizer
 from text_summarizer import summarizer
 import os
 import json
