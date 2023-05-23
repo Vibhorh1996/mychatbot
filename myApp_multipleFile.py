@@ -1,19 +1,11 @@
 import streamlit as st
-from streamlit_chat import message
-import pandas as pd
-# from llama_index.indices.struct_store import GPTPandasIndex
-# from llama_index import SimpleDirectoryReader, GPTSimpleVectorIndex
 import os
-import json
-import pickle
-from abc import ABC, abstractmethod
-from typing import List
-from langchain.agents import create_pandas_dataframe_agent
-import requests
-import mimetypes
 from bs4 import BeautifulSoup
-import tiktoken
+import requests
 from urllib.parse import urljoin, urlsplit
+import mimetypes
+import pickle
+import tiktoken
 from langchain.llms import OpenAI
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import FAISS as BaseFAISS
@@ -27,7 +19,6 @@ from langchain.document_loaders import (
 )
 
 
-
 def count_tokens(text, model="gpt-3.5-turbo"):
     encoding = tiktoken.get_encoding("cl100k_base")
     encoding = tiktoken.encoding_for_model(model)
@@ -35,10 +26,26 @@ def count_tokens(text, model="gpt-3.5-turbo"):
     return tokens
 
 
-class DocumentLoader(ABC):
-    @abstractmethod
-    def load_and_split(self) -> List[str]:
-        pass
+class DocumentLoader:
+    def __init__(self, file_path_or_url):
+        self.file_path_or_url = file_path_or_url
+
+    def load_and_split(self):
+        if self.file_path_or_url.startswith("http://") or self.file_path_or_url.startswith("https://"):
+            handle_website = URLHandler()
+            return WebBaseLoader(handle_website.extract_links_from_websites([self.file_path_or_url]))
+        else:
+            mime_type, _ = mimetypes.guess_type(self.file_path_or_url)
+
+            if mime_type == 'application/pdf':
+                return PyPDFLoader(self.file_path_or_url)
+            elif mime_type == 'text/csv':
+                return CSVLoader(self.file_path_or_url)
+            elif mime_type in ['application/msword',
+                               'application/vnd.openxmlformats-officedocument.wordprocessingml.document']:
+                return UnstructuredWordDocumentLoader(self.file_path_or_url)
+            else:
+                raise ValueError(f"Unsupported file type: {mime_type}")
 
 
 class FAISS(BaseFAISS):
@@ -85,271 +92,145 @@ class URLHandler:
         return all_links
 
 
-# setting page title and header
+# Setting page title and header
 st.set_page_config(page_title="Data Chat", page_icon=':robot_face:')
 st.markdown("<h1 stype='text-align:center;'>Data Chat</h1>", unsafe_allow_html=True)
 st.markdown("<h2 stype='text-align:center;'>A Chatbot for conversing with your data</h2>", unsafe_allow_html=True)
 
-# set API Key
-key = st.text_input('OpenAI API Key','',type='password')
+# Set API Key
+key = st.text_input('OpenAI API Key', '', type='password')
 os.environ['OPENAPI_API_KEY'] = key
 os.environ['OPENAI_API_KEY'] = key
 
+# Model selection
+st.sidebar.markdown('### Select Model')
+model_name = st.sidebar.radio('Model', ('GPT-3.5', 'GPT-4'))
+model_id = 'gpt-3.5-turbo' if model_name == 'GPT-3.5' else 'gpt-4.0-turbo'
 
-# initialize session state variables
-if 'generated' not in st.session_state:
-    st.session_state['generated']=[]
+# Initialize components
+if not 'openai_agent' in st.session_state:
+    st.session_state.openai_agent = None
 
-if 'past' not in st.session_state:
-    st.session_state['past']=[]
+if not 'faiss_index' in st.session_state:
+    st.session_state.faiss_index = None
 
-if 'messages' not in st.session_state:
-    st.session_state['messages']=[
-        {"role":"DataChat","content":"You are a helpful bot."}
-    ]
+if not 'embedding' in st.session_state:
+    st.session_state.embedding = None
 
-if 'model_name' not in st.session_state:
-    st.session_state['model_name']=[]
+if not 'document_loaders' in st.session_state:
+    st.session_state.document_loaders = []
 
-if 'cost' not in st.session_state:
-    st.session_state['cost']=[]
+if not 'total_tokens' in st.session_state:
+    st.session_state.total_tokens = 0
 
-if 'total_tokens' not in st.session_state:
-    st.session_state['total_tokens']=[]
+if not 'cost' in st.session_state:
+    st.session_state.cost = 0.0
 
-if 'total_cost' not in st.session_state:
-    st.session_state['total_cost']=0.0
+# File upload
+uploaded_files = st.file_uploader("Upload files", accept_multiple_files=True)
 
-# sidebar - let user choose model, show total cost of current conversation, and let user clear the current conversation
-st.sidebar.title("Sidebar")
-model_name = st.sidebar.radio("Choose a model:",("GPT-3.5", "GPT-4"))
-counter_placeholder = st.sidebar.empty()
-counter_placeholder.write(f"Total cost of this conversation: ${st.session_state['total_cost']:.5f}")
-clear_button = st.sidebar.button("Clear Conversation", key="clear")
-
-# map model names to OpenAI model IDs
-if model_name == "GPT-3.5":
-    model = "gpt-3.5-turbo"
-else:
-    model = "gpt-4"
-
-# reset everything
-if clear_button:
-    st.session_state['generated'] = []
-    st.session_state['past'] = []
-    st.session_state['messages'] = [
-        {"role": "system", "content": "You are a helpful assistant."}
-    ]
-    st.session_state['number_tokens'] = []
-    st.session_state['model_name'] = []
-    st.session_state['cost'] = []
-    st.session_state['total_cost'] = 0.0
-    st.session_state['total_tokens'] = []
-    counter_placeholder.write(f"Total cost of this conversation: ${st.session_state['total_cost']:.5f}")
-        
-# def askQuestion():
-#     prompt = st.text_input("write your question:")
-#     response = index.query(prompt)
-#     st.write(response)
-
-#     # Get the last token usage
-#     last_token_usage = index.llm_predictor.last_token_usage
-#     st.write(f"last_token_usage={last_token_usage}")
-
-def save_uploadedfile(uploadedfiles: List[st.uploaded_file_manager.UploadedFile]):
-    file_paths = []
-    for uploadedfile in uploadedfiles:
-        with open(os.path.join("data/dataset", uploadedfile.name), "wb") as f:
-            f.write(uploadedfile.getbuffer())
-        file_paths.append("data/dataset/" + uploadedfile.name)
-    return file_paths
-
-
-def generate_response(index,prompt):
-    st.session_state['messages'].append({"role":"user","content":prompt})
-
-    response = index.query(prompt)
-    st.session_state['messages'].append({"role":"DataChat","content":response})
-
-    #last_token_usage = index.llm_predictor.last_token_usage
-    last_token_usage = 0.0
-    #print(f"last_token_usage={last_token_usage}")
-
-    return response,  last_token_usage
-
-def get_loader(file_path_or_url):
-    if file_path_or_url.startswith("http://") or file_path_or_url.startswith("https://"):
-        handle_website = URLHandler()
-        return WebBaseLoader(handle_website.extract_links_from_websites([file_path_or_url]))
-    else:
-        mime_type, _ = mimetypes.guess_type(file_path_or_url)
-
-        if mime_type == 'application/pdf':
-            return PyPDFLoader(file_path_or_url)
-        elif mime_type == 'text/csv':
-            return CSVLoader(file_path_or_url)
-        elif mime_type in ['application/msword',
-                           'application/vnd.openxmlformats-officedocument.wordprocessingml.document']:
-            return UnstructuredWordDocumentLoader(file_path_or_url)
-        else:
-            raise ValueError(f"Unsupported file type: {mime_type}")
-
-def train_or_load_model(train, faiss_obj_path, file_path, idx_name):
-    if train:
-        loader = get_loader(file_path)
-        pages = loader.load_and_split()
-
-        # if os.path.exists(faiss_obj_path):
-        #     faiss_index = FAISS.load(faiss_obj_path)
-        #     new_embeddings = faiss_index.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
-        #     new_embeddings.save(faiss_obj_path)
-        # else:
-        #     # faiss_index = FAISS.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
-        #     faiss_index = FAISS.from_documents(pages, embeddings)
-        faiss_index = FAISS.from_documents(pages, embeddings)
-
-        faiss_index.save(faiss_obj_path)
-
-        return FAISS.load(faiss_obj_path)
-    else:
-        return FAISS.load(faiss_obj_path)
-
-
-def answer_questions(faiss_index, user_input):
-    messages = [
-        SystemMessage(
-            content='I want you to act as a document that I am having a conversation with. Your name is "AI '
-                    'Assistant". You will provide me with answers from the given info. If the answer is not included, '
-                    'say exactly "Hmm, I am not sure." and stop after that. Refuse to answer any question not about '
-                    'the info. Never break character.')
-    ]
-
-    # while True:
-        # question = input("Ask a question (type 'stop' to end): ")
-        # if question.lower() == "stop":
-        #     break
-
-    docs = faiss_index.similarity_search(query=user_input, k=2)
-
-    main_content = user_input + "\n\n"
-    for doc in docs:
-        main_content += doc.page_content + "\n\n"
-
-    messages.append(HumanMessage(content=main_content))
-    ai_response = chat(messages).content
-    messages.pop()
-    messages.append(HumanMessage(content=user_input))
-    messages.append(AIMessage(content=ai_response))
-
-    return ai_response
-
-
-# def main():
-#     faiss_obj_path = "/Users/puneetsachdeva/Downloads/langchain-chat-main/models/test.pickle"
-#     file_path = "/Users/puneetsachdeva/Downloads/langchain-chat-main/data/mlb_players.csv"
-#     index_name = "test"
-
-#     train = int(input("Do you want to train the model? (1 for yes, 0 for no): "))
-#     faiss_index = train_or_load_model(train, faiss_obj_path, file_path, index_name)
-#     answer_questions(faiss_index)
-
-
-df=None
-uploaded_files = st.file_uploader("Choose file(s) (PDF / CSV)", accept_multiple_files=True)
-file_paths = []
 if uploaded_files:
+    document_loaders = []
     for uploaded_file in uploaded_files:
-        file_details = {"FileName": uploaded_file.name, "FileType": uploaded_file.type}
-        file_path = save_uploadedfile(uploaded_file)
-        file_paths.extend(file_path)
-        if uploaded_file.type == "text/csv":
-            df = pd.read_csv(uploaded_file)
-            st.dataframe(df.head(10))
-            agent = create_pandas_dataframe_agent(OpenAI(temperature=0), df, verbose=True)
-        elif uploaded_file.type == "application/pdf":
-            embeddings = OpenAIEmbeddings(openai_api_key=key)
-            chat = ChatOpenAI(temperature=0, openai_api_key=key)
-            faiss_obj_path = "models/test.pickle"
-            index_name = "test"
-            faiss_index = train_or_load_model(1, faiss_obj_path, file_path, index_name)
-        else:
-            st.write("Incompatible file type")
+        file_extension = os.path.splitext(uploaded_file.name)[1]
+        file_path = f"uploaded_file{file_extension}"
 
+        with open(file_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
 
-st.session_state['generated'] = []
-st.session_state['past'] = []
-st.session_state['messages'] = [
-    {"role": "system", "content": "You are a helpful assistant."}
-]
-st.session_state['number_tokens'] = []
-st.session_state['model_name'] = []
-st.session_state['cost'] = []
-st.session_state['total_cost'] = 0.0
-st.session_state['total_tokens'] = []
+        document_loader = DocumentLoader(file_path)
+        document_loaders.append(document_loader)
 
-# container for chat history
-response_container = st.container()
-# container for text box
-container = st.container()
+    st.session_state.document_loaders = document_loaders
+    st.session_state.document_models = []
+    st.session_state.total_tokens = 0
+    st.session_state.cost = 0.0
 
-# documents = SimpleDirectoryReader('data/dataset').load_data()
-# index = GPTSimpleVectorIndex.from_documents(documents)
+# Check if API Key is provided
+if not key:
+    st.warning("Please provide your OpenAI API Key.")
+    st.stop()
 
-with container:
-    with st.form(key='my_form', clear_on_submit=True):
-        user_input = st.text_area("You:", key='input', height=100)
-        submit_button = st.form_submit_button(label='Send')
+# Check if any document loaders are available
+if not st.session_state.document_loaders:
+    st.info("Please upload files to begin.")
+    st.stop()
 
-    # Within the 'with container' block
-if submit_button and user_input and file_paths:
-    if uploaded_file.type == "text/csv":
-        output = agent.run(user_input)
-    elif uploaded_file.type == "application/pdf":
-        output = answer_questions(faiss_index, user_input)
-    total_tokens = 0
-    st.session_state['past'].append(user_input)
-    st.session_state['generated'].append(output)
-    st.session_state['model_name'].append(model_name)
-    st.session_state['total_tokens'].append(total_tokens)
+# Load the documents
+if not st.session_state.document_models:
+    document_models = []
+    for document_loader in st.session_state.document_loaders:
+        document_model = document_loader.load_and_split()
+        document_models.append(document_model)
+    st.session_state.document_models = document_models
 
-    if model_name == "GPT-3.5":
-        cost = total_tokens * 0.002 / 1000
+# Load the Faiss Index and Embedding
+if not st.session_state.faiss_index or not st.session_state.embedding:
+    faiss_index = FAISS.load("faiss.index")
+    st.session_state.faiss_index = faiss_index
+
+    embedding = OpenAIEmbeddings("gpt-3.5-turbo")
+    st.session_state.embedding = embedding
+
+# Initialize the chat agent
+if not st.session_state.openai_agent:
+    model = ChatOpenAI(model_id=model_id)
+    st.session_state.openai_agent = model
+
+# Initialize OpenAI
+openai_agent = st.session_state.openai_agent
+
+# Initialize Faiss Index and Embedding
+faiss_index = st.session_state.faiss_index
+embedding = st.session_state.embedding
+
+# Total tokens and cost calculation
+total_tokens = st.session_state.total_tokens
+cost_per_token = 0.0004  # Cost per token for GPT-3.5 Turbo, adjust as per your usage
+cost = st.session_state.cost
+
+# Chat interface
+user_input = st.text_area("You:", "", height=100, max_chars=200, key="input_text_area")
+if st.button("Send"):
+    if user_input.strip() == "":
+        st.warning("Please enter a message.")
     else:
-        cost = total_tokens * 0.002 / 1000
-    st.session_state['cost'].append(cost)
-    st.session_state['total_cost'] += cost
+        user_message = HumanMessage(user_input)
+        for document_model in st.session_state.document_models:
+            document_model.receive(user_message)
 
-    
-#     if submit_button and user_input:
-#         # output, last_token_count = generate_response(index,user_input)
-#         if uploaded_file.type == "text/csv":
-#             output = agent.run(user_input)
-#         elif uploaded_file.type == "application/pdf":
-#             output = answer_questions(faiss_index, user_input)    
-#         #st.write(output)
-#         #total_tokens = last_token_count
-#         total_tokens = 0
-#         st.session_state['past'].append(user_input)
-#         # st.session_state['generated'].append(output.response)
-#         st.session_state['generated'].append(output)
-#         st.session_state['model_name'].append(model_name)
-#         st.session_state['total_tokens'].append(total_tokens)
+        document_responses = []
+        for document_model in st.session_state.document_models:
+            document_response = document_model.generate(
+                [AIMessage(agent=embedding, score_threshold=0.5)], beam_size=1
+            )
+            document_responses.append(document_response.generated_messages[0].content)
 
-#         # from https://openai.com/pricing#language-models
-#         if model_name == "GPT-3.5":
-#             cost = total_tokens * 0.002 / 1000
-#         else:
-#             #cost = (prompt_tokens * 0.03 + completion_tokens * 0.06) / 1000
-#             cost = total_tokens * 0.002 / 1000
-#         st.session_state['cost'].append(cost)
-#         st.session_state['total_cost'] += cost
+        document_answer = "\n".join(document_responses)
+        total_tokens += count_tokens(user_input)
+        total_tokens += count_tokens(document_answer)
+        cost = total_tokens * cost_per_token
 
-if st.session_state['generated']:
-    #st.write(st.session_state['generated'])
-    with response_container:
-        for i in range(len(st.session_state['generated'])):
-            message(st.session_state["past"][i], is_user=True, key=str(i) + '_user')
-            message(st.session_state["generated"][i], key=str(i))
-            st.write(
-                f"Model used: {st.session_state['model_name'][i]}; Number of tokens: {st.session_state['total_tokens'][i]}; Cost: ${st.session_state['cost'][i]:.5f}")
-            counter_placeholder.write(f"Total cost of this conversation: ${st.session_state['total_cost']:.5f}")
+        response = openai_agent.respond(user_input)
+        response_message = response.generated_messages[0]
+        response_content = response_message.content
+
+        for document_model in st.session_state.document_models:
+            document_model.receive(AIMessage(agent=openai_agent, score_threshold=0.5))
+            document_model.receive(AIMessage(agent=embedding, score_threshold=0.5))
+
+        st.write("Response:", response_content)
+        st.write("Answer:", document_answer)
+        st.write(f"Total Tokens: {total_tokens}")
+        st.write(f"Cost: ${cost:.2f}")
+        st.session_state.total_tokens = total_tokens
+        st.session_state.cost = cost
+
+# Save the state
+st.session_state.faiss_index = faiss_index
+st.session_state.embedding = embedding
+st.session_state.openai_agent = openai_agent
+st.session_state.document_loaders = st.session_state.document_loaders
+st.session_state.document_models = st.session_state.document_models
+st.session_state.total_tokens = total_tokens
+st.session_state.cost = cost
