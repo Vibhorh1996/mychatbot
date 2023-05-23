@@ -13,11 +13,12 @@ scikit-learn = "*"
 sumy = "*"
 textract = "*"
 wikipedia-api = "*"
-langchain = "1.0.0"
 text_summarizer = "*"
 pdfminer.six = "*"
 tiktoken = "*"
-
+streamlit = "*"
+openai = "*"
+langchain = "*"
 
 [dev-packages]
 
