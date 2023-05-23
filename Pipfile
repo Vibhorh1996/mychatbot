@@ -19,6 +19,7 @@ tiktoken = "*"
 streamlit = "*"
 openai = "*"
 langchain = "*"
+streamlit_chat = "*"
 
 [dev-packages]
 
