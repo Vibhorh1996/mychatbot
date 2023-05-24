@@ -5,6 +5,7 @@ verify_ssl = true
 
 [packages]
 beautifulsoup4 = "*"
+PyPDF2 = "*"
 numpy = "*"
 pandas = "*"
 python-docx = "*"
