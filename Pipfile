@@ -6,7 +6,7 @@ verify_ssl = true
 [packages]
 beautifulsoup4 = "*"
 faiss-cpu = "*"
-src = {path = “./src”}
+src = {editable = true, path = "./src"}
 PyPDF2 = "*"
 numpy = "*"
 pandas = "*"
