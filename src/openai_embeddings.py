@@ -5,7 +5,7 @@ class OpenAIEmbeddings:
     def __init__(self, model_name, openai_api_key):
         self.model_name = model_name
         self.openai_api_key = openai_api_key
-        messages = [{“role”: “system”, “content”: “You are a helpful assistant.”}]
+        messages = [{"role": "system", "content": "You are a helpful assistant."}]
         self.tokenizer = openai.ChatCompletion.create(model=model_name, messages=messages)
         self.encoder = openai.Encoder(model=model_name)
     
