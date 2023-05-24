@@ -3,7 +3,7 @@ import openai
 class Tokenizer:
     def __init__(self, model):
         self.model = model
-        self.tokenizer = Tokenizer(model=model_name)
+        self.tokenizer = openai.Tokenizer(model=model)
     
     def encode(self, text):
         return self.tokenizer.encode(text)
