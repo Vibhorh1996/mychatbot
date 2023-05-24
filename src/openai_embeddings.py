@@ -5,7 +5,7 @@ class OpenAIEmbeddings:
     def __init__(self, model_name, openai_api_key):
         self.model_name = model_name
         self.openai_api_key = openai_api_key
-        self.tokenizer = Tokenizer(model=model_name)
+        self.tokenizer = openai.Completion.create(model=model)
         self.encoder = openai.Encoder(model=model_name)
     
     def embed(self, text):
