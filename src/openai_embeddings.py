@@ -36,8 +36,20 @@ class ChatOpenAI:
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": input_text}
         ]
-        response = self.chat_model.create(messages=messages)
+        response = self.chat_model.create(messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": input_text}
+        ])
         return response.choices[0].message.content
+
+    
+#     def generate_response(self, input_text):
+#         messages = [
+#             {"role": "system", "content": "You are a helpful assistant."},
+#             {"role": "user", "content": input_text}
+#         ]
+#         response = self.chat_model.create(messages=messages)
+#         return response.choices[0].message.content
 
     
 #     def generate_response(self, input_text):
