@@ -172,7 +172,7 @@ def get_loader(file_path_or_url):
             raise ValueError(f"Unsupported file type: {mime_type}")
 
 
-def train_or_load_model(train, faiss_obj_path, file_paths):
+def train_or_load_model(train, faiss_obj_path, file_paths, embeddings):
     if train:
         pages = [] # a list to store all the pages from all the files
         for file_path in file_paths: # loop through the file paths
@@ -227,7 +227,8 @@ uploaded_files = st.file_uploader("Choose one or more PDF files", type="pdf", ac
 if uploaded_files: # if there are uploaded files
     # initialize OpenAI embeddings and chat model
     embeddings = OpenAIEmbeddings(openai_api_key=key)
-    chat = ChatOpenAI(temperature=0, openai_api_key=key)
+    chat = ChatOpenAI()
+    #chat = ChatOpenAI(temperature=0, openai_api_key=key)
 
     faiss_obj_path = "models/all_files.pickle" # define the path to save or load the FAISS object for all files
     file_paths = [] # a list to store all the file paths of uploaded files
@@ -235,7 +236,10 @@ if uploaded_files: # if there are uploaded files
         file_path = save_uploadedfile(uploaded_file) # save each file to a specific location and get its path
         file_paths.append(file_path) # append each file path to the list
 
-    faiss_index = train_or_load_model(1, faiss_obj_path, file_paths) # train or load a single FAISS index for all files
+    #faiss_index = train_or_load_model(1, faiss_obj_path, file_paths) # train or load a single FAISS index for all files
+    embeddings = OpenAIEmbeddings(openai_api_key=key)
+    faiss_index = train_or_load_model(True, faiss_obj_path, file_paths, embeddings)
+
 
 with container:
     with st.form(key='my_form', clear_on_submit=True):
