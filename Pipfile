@@ -19,7 +19,7 @@ text_summarizer = "*"
 pdfminer.six = "*"
 tiktoken = "*"
 streamlit = "*"
-openai = "0.31.0"
+openai = "*"
 langchain = "*"
 streamlit_chat = "*"
 
