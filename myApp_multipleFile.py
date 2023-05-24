@@ -22,7 +22,7 @@ This is a Streamlit-based application that works as a chatbot for conversing wit
 """
 
 # setting page title and header
-st.set_page_config(page_title="Data Chat", page_icon=':robot_face:')
+#st.set_page_config(page_title="Data Chat", page_icon=':robot_face:')
 st.markdown("<h1 stype='text-align:center;'>Data Chat</h1>", unsafe_allow_html=True)
 st.markdown("<h2 stype='text-align:center;'>A Chatbot for conversing with your data</h2>", unsafe_allow_html=True)
 
