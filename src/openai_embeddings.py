@@ -11,7 +11,7 @@ class OpenAIEmbeddings:
     
     def embed(self, text):
         inputs = self.tokenizer.encode(text)
-        embedding = self.encoder.encode(inputs)
+        embedding = openai.Embed(inputs)
         return embedding
 
 
