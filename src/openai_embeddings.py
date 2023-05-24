@@ -10,14 +10,14 @@ class OpenAIEmbeddings:
         #self.encoder = openai.TextEmbeddings.create(model=model_name)
     
     def embed(self, text):
-    inputs = self.tokenizer.encode(text)
-    embedding = openai.Embed.create(
-        model=self.model_name,
-        inputs=inputs,
-        engine="davinci-codex",
-        prompt_label="text"
-    )
-    return embedding.choices[0].doc_embeddings
+        inputs = self.tokenizer.encode(text)
+        embedding = openai.Embed.create(
+            model=self.model_name,
+            inputs=inputs,
+            engine="davinci-codex",
+            prompt_label="text"
+        )
+        return embedding.choices[0].doc_embeddings
     
 #     def embed(self, text):
 #         inputs = self.tokenizer.encode(text)
