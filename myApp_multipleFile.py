@@ -1,5 +1,6 @@
 # import necessary packages
 import sys; sys.path.append('src')
+import openai
 import os
 import re
 import json
