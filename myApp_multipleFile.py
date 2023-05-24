@@ -227,8 +227,8 @@ uploaded_files = st.file_uploader("Choose one or more PDF files", type="pdf", ac
 if uploaded_files: # if there are uploaded files
     # initialize OpenAI embeddings and chat model
     embeddings = OpenAIEmbeddings(openai_api_key=key)
-    chat = ChatOpenAI()
-    #chat = ChatOpenAI(temperature=0, openai_api_key=key)
+    #chat = ChatOpenAI()
+    chat = ChatOpenAI(temperature=0, openai_api_key=key , model_name=model)
 
     faiss_obj_path = "models/all_files.pickle" # define the path to save or load the FAISS object for all files
     file_paths = [] # a list to store all the file paths of uploaded files
@@ -247,7 +247,8 @@ with container:
         submit_button = st.form_submit_button(label='Send') # create a button for submitting user input
 
     if submit_button and user_input: # if user input is submitted
-        output = answer_questions(faiss_index, user_input)  # use the answer_questions function to generate a response based on user input and FAISS index   
+        output = answer_questions(faiss_index, user_input)  # use the answer_questions function to generate a response based on user input and FAISS index
+        response = chat.generate_response(user_input)
         total_tokens = 0 # set total tokens to zero (this can be changed if token usage is available)
         st.session_state['past'].append(user_input) # append user input to session state variable 'past'
         st.session_state['generated'].append(output) # append generated output to session state variable 'generated'
