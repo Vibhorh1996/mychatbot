@@ -16,7 +16,7 @@ from typing import List
 from src.parse_document import PdfParser
 from src.indexer import FaissIndexer
 from src.openai_embeddings import OpenAIEmbeddings, ChatOpenAI
-
+import sys; sys.path.append('src')
 """
 This is a Streamlit-based application that works as a chatbot for conversing with data from PDF files.
 """
