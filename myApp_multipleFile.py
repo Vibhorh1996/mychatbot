@@ -226,8 +226,8 @@ uploaded_files = st.file_uploader("Choose one or more PDF files", type="pdf", ac
 
 if uploaded_files: # if there are uploaded files
     # initialize OpenAI embeddings and chat model
-    embeddings = OpenAIEmbeddings(openai_api_key=key, model_name = model)
-    chat = ChatOpenAI(temperature=0, openai_api_key=key, model_name = model)
+    embeddings = OpenAIEmbeddings(openai_api_key=key, model = model_name)
+    chat = ChatOpenAI(temperature=0, openai_api_key=key, model = model_name)
 
     faiss_obj_path = "models/all_files.pickle" # define the path to save or load the FAISS object for all files
     file_paths = [] # a list to store all the file paths of uploaded files
