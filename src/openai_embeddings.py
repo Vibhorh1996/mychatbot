@@ -28,9 +28,12 @@ class OpenAIEmbeddings:
 
 
 class ChatOpenAI:
-    def __init__(self, model_name, openai_api_key):
+    def __init__(self, model_name, openai_api_key, messages=None):
         self.model_name = model_name
         self.openai_api_key = openai_api_key
+        if messages is None:
+            messages = [{"role": "system", "content": "You are a helpful assistant."}]
+            self.chat_model = openai.ChatCompletion.create(model=model_name, messages = messages)
         self.chat_model = openai.ChatCompletion.create(model=model_name)
    
     def generate_response(self, input_text):
