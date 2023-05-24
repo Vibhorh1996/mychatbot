@@ -226,7 +226,7 @@ uploaded_files = st.file_uploader("Choose one or more PDF files", type="pdf", ac
 
 if uploaded_files: # if there are uploaded files
     # initialize OpenAI embeddings and chat model
-    embeddings = OpenAIEmbeddings(‘gpt-3.5-turbo’, openai_api_key=key)
+    embeddings = OpenAIEmbeddings('gpt-3.5-turbo', openai_api_key=key)
     #chat = ChatOpenAI()
     chat = ChatOpenAI(temperature=0, openai_api_key=key , model_name=model)
 
@@ -237,7 +237,7 @@ if uploaded_files: # if there are uploaded files
         file_paths.append(file_path) # append each file path to the list
 
     #faiss_index = train_or_load_model(1, faiss_obj_path, file_paths) # train or load a single FAISS index for all files
-    embeddings = OpenAIEmbeddings(openai_api_key=key)
+    embeddings = OpenAIEmbeddings('gpt-3.5-turbo', openai_api_key=key)
     faiss_index = train_or_load_model(True, faiss_obj_path, file_paths, embeddings)
 
 
