@@ -29,6 +29,7 @@ st.markdown("<h2 stype='text-align:center;'>A Chatbot for conversing with your d
 
 # set API Key
 key = st.text_input('OpenAI API Key','',type='password')
+openai.api_key = key
 os.environ['OPENAI_API_KEY'] = key
 
 # initialize session state variables
