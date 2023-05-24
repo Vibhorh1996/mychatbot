@@ -89,10 +89,10 @@ class DocumentLoader(ABC):
         pass
 
 
-class FAISS(BaseFAISS):
-    def save(self, file_path):
-        with open(file_path, "wb") as f:
-            pickle.dump(self, f)
+# class FAISS(BaseFAISS):
+#     def save(self, file_path):
+#         with open(file_path, "wb") as f:
+#             pickle.dump(self, f)
 
     @staticmethod
     def load(file_path):
