@@ -1,4 +1,5 @@
 import openai
+from tokenizer.tokenizer import Tokenizer
 
 class OpenAIEmbeddings:
     def __init__(self, model_name, openai_api_key):
