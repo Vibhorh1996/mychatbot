@@ -1,19 +1,12 @@
-import openai
-from src.embeddings import Embed
-from tenacity import retry, stop_after_attempt, wait_exponential
-from src.tokenizer.tokenizer import Tokenizer
-
-
 class OpenAIEmbeddings:
     def __init__(self, model_name, openai_api_key, messages=None):
         self.model_name = model_name
         self.openai_api_key = openai_api_key
         if messages is None:
-            messages = ["You are a helpful assistant."]  #[{"role": "system", "content": "You are a helpful assistant."}]
-        #self.tokenizer = openai.ChatCompletion.create(model=model_name, messages=self.messages)
+            messages = [{"role": "system", "content": "You are a helpful assistant."}]
         self.messages = messages
         self.tokenizer = Embed.create(model=model_name, inputs=self.messages)
-        self.chat_model = openai.ChatCompletion.create(model=model_name, messages=messages)
+        self.chat_model = openai.ChatCompletion.create(model=model_name, messages=self.messages)
 
     def embed(self, texts):
         tokenized_texts = [self.tokenizer.encode(text) for text in texts]
@@ -30,18 +23,19 @@ class OpenAIEmbeddings:
 
         return embeddings
 
+
 class ChatOpenAI:
     def __init__(self, model_name, openai_api_key, messages=None):
         self.model_name = model_name
         self.openai_api_key = openai_api_key
         if messages is None:
-            messages = ["You are a helpful assistant."]  #[{"role": "system", "content": "You are a helpful assistant."}]
+            messages = [{"role": "system", "content": "You are a helpful assistant."}]
         self.messages = messages
-        self.chat_model = openai.ChatCompletion.create(model=model_name, messages=messages)
+        self.chat_model = openai.ChatCompletion.create(model=model_name, messages=self.messages)
 
     @retry(
-        stop=stop_after_attempt(3),  # Retry for a maximum of 3 attempts
-        wait=wait_exponential(multiplier=1, min=2, max=5)  # Exponential backoff with a base of 2
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=5)
     )
     def generate_response(self, input_text):
         messages = self.messages + [
