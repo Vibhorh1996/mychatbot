@@ -20,7 +20,7 @@ class OpenAIEmbeddings:
         embeddings = []
 
         for tokens in tokenized_texts:
-            embedding = openai.Embed.create(
+            embedding = Embed.create(
                 model=self.model_name,
                 inputs=tokens,
                 engine="davinci-codex",
