@@ -1,7 +1,8 @@
 import openai
+from src.embeddings import Embed
 from tenacity import retry, stop_after_attempt, wait_exponential
 from src.tokenizer.tokenizer import Tokenizer
-from src.embeddings import Embed
+
 
 class OpenAIEmbeddings:
     def __init__(self, model_name, openai_api_key, messages=None):
