@@ -15,11 +15,12 @@ class Embed:
         return embed
 
     def create_embeddings(self):
-        response = openai.EmbeddingCompletion.create(
+        response = openai.Completion.create(
             model=self.model,
             inputs=self.inputs,
             engine=self.engine,
-            prompt_label=self.prompt_label
+            prompt_label=self.prompt_label,
+            embed=True
         )
         self.embeddings = response.choices[0].doc_embeddings
 
