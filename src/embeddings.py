@@ -9,7 +9,7 @@ class Embed:
         self.embeddings = None
 
     @classmethod
-    def create(cls, inputs,  prompt_label="text"): #engine="davinci-codex",
+    def create(cls, model, inputs,  prompt_label="text"): #engine="davinci-codex",
         embed = cls(inputs, prompt_label) #engine,
         embed.create_embeddings()
         return embed
