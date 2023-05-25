@@ -20,7 +20,7 @@ class Embed:
             inputs=self.inputs,
             engine=self.engine, #removed engine param from here and from all other functions where it was taken as a param. init,create
             prompt_label=self.prompt_label,
-            embed=True
+            Embed=True
         )
         print(response)
         self.embeddings = response.choices[0].doc_embeddings
