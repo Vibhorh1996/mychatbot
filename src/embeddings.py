@@ -22,6 +22,7 @@ class Embed:
             prompt_label=self.prompt_label,
             embed=True
         )
+        print(response)
         self.embeddings = response.choices[0].doc_embeddings
 
     def get_embeddings(self):
