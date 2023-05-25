@@ -227,27 +227,40 @@ def answer_questions(faiss_index, user_input):
 
     return ai_response # return the AI response
 
-
 # allow users to upload multiple PDF files using the st.file_uploader function
 uploaded_files = st.file_uploader("Choose one or more PDF files", type="pdf", accept_multiple_files=True)
 
-if uploaded_files: # if there are uploaded files
-    # initialize OpenAI embeddings and chat model
-    embeddings = OpenAIEmbeddings('gpt-3.5-turbo', openai_api_key=key)
-    print(embeddings)
-    #chat = ChatOpenAI()
-    #chat = ChatOpenAI(temperature=0, openai_api_key=key , model_name=model)
-    chat = ChatOpenAI(openai_api_key=key , model_name=model, messages=embeddings.messages)
-
-    faiss_obj_path = "models/all_files.pickle" # define the path to save or load the FAISS object for all files
+if uploaded_files:
     file_paths = [] # a list to store all the file paths of uploaded files
     for uploaded_file in uploaded_files: # loop through the uploaded files
         file_path = save_uploadedfile(uploaded_file) # save each file to a specific location and get its path
         file_paths.append(file_path) # append each file path to the list
+        # initialize OpenAI embeddings and chat model
+        embeddings = OpenAIEmbeddings('gpt-3.5-turbo', openai_api_key=key)
+        print(embeddings)
+    #chat = ChatOpenAI()
+    #chat = ChatOpenAI(temperature=0, openai_api_key=key , model_name=model)
+        chat = ChatOpenAI(openai_api_key=key , model_name=model, messages=embeddings.messages)
+
+        faiss_obj_path = "models/all_files.pickle" # define the path to save or load the FAISS object for all files
+    
 
     #faiss_index = train_or_load_model(1, faiss_obj_path, file_paths) # train or load a single FAISS index for all files
-    embeddings = OpenAIEmbeddings('gpt-3.5-turbo', openai_api_key=key)
-    faiss_index = train_or_load_model(True, faiss_obj_path, file_paths, embeddings)
+        embeddings = OpenAIEmbeddings('gpt-3.5-turbo', openai_api_key=key)
+        faiss_index = train_or_load_model(True, faiss_obj_path, file_paths, embeddings)
+else:
+    st.write("Incompatible file type")
+
+st.session_state['generated'] = []
+st.session_state['past'] = []
+st.session_state['messages'] = [
+    {"role": "system", "content": "You are a helpful assistant."}
+]
+st.session_state['number_tokens'] = []
+st.session_state['model_name'] = []
+st.session_state['cost'] = []
+st.session_state['total_cost'] = 0.0
+st.session_state['total_tokens'] = []
 
 # container for chat history
 response_container = st.container()
