@@ -8,7 +8,7 @@ class OpenAIEmbeddings:
         self.openai_api_key = openai_api_key
         if messages is None:
             messages = [{"role": "system", "content": "You are a helpful assistant."}]
-        self.tokenizer = Tokenizer(model=model_name)
+        self.tokenizer = openai.ChatCompletion.create(model=model_name, messages=self.messages)
         self.messages = messages
         self.chat_model = openai.ChatCompletion.create(model=model_name, messages=messages)
 
