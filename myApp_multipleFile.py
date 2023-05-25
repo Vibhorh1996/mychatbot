@@ -19,6 +19,7 @@ from src.parse_document import PdfParser
 from src.indexer import FaissIndexer
 from src.openai_embeddings import OpenAIEmbeddings, ChatOpenAI
 from langchain.vectorstores import FAISS as BaseFAISS
+from langchain.schema import AIMessage, HumanMessage, SystemMessage
 
 """
 This is a Streamlit-based application that works as a chatbot for conversing with data from PDF files.
