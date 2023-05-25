@@ -145,17 +145,17 @@ def save_uploadedfile(uploadedfile):
      return "data/dataset/" + uploadedfile.name
 
 
-def generate_response(index, prompt):
-    st.session_state['messages'].append({"role": "user", "content": prompt})
+# def generate_response(index, prompt):
+#     st.session_state['messages'].append({"role": "user", "content": prompt})
 
-    response = index.query(prompt)
-    st.session_state['messages'].append({"role": "DataChat", "content": response})
+#     response = index.query(prompt)
+#     st.session_state['messages'].append({"role": "DataChat", "content": response})
 
-    # last_token_usage = index.llm_predictor.last_token_usage
-    last_token_usage = 0.0
-    # print(f"last_token_usage={last_token_usage}")
+#     # last_token_usage = index.llm_predictor.last_token_usage
+#     last_token_usage = 0.0
+#     # print(f"last_token_usage={last_token_usage}")
 
-    return response, last_token_usage
+#     return response, last_token_usage
 
 
 def get_loader(file_path_or_url):
