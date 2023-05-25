@@ -230,6 +230,7 @@ uploaded_files = st.file_uploader("Choose one or more PDF files", type="pdf", ac
 if uploaded_files: # if there are uploaded files
     # initialize OpenAI embeddings and chat model
     embeddings = OpenAIEmbeddings('gpt-3.5-turbo', openai_api_key=key)
+    print(embeddings)
     #chat = ChatOpenAI()
     #chat = ChatOpenAI(temperature=0, openai_api_key=key , model_name=model)
     chat = ChatOpenAI(openai_api_key=key , model_name=model, messages=embeddings.messages)
