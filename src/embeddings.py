@@ -16,7 +16,7 @@ class Embed:
 
     def create_embeddings(self):
         response = openai.Completion.create(
-            model=self.model 
+            model=self.model,
             inputs=self.inputs,
             #engine=self.engine removed engine param from here and from all other functions where it was taken as a param. init,create
             prompt_label=self.prompt_label,
