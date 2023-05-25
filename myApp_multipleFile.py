@@ -24,6 +24,57 @@ from langchain.vectorstores import FAISS as BaseFAISS
 This is a Streamlit-based application that works as a chatbot for conversing with data from PDF files.
 """
 
+# class definitions
+
+class DocumentLoader(ABC):
+    @abstractmethod
+    def load_and_split(self) -> List[str]:
+        pass
+
+
+class FAISS(BaseFAISS):
+    def save(self, file_path):
+        with open(file_path, "wb") as f:
+            pickle.dump(self, f)
+
+    @staticmethod
+    def load(file_path):
+        with open(file_path, "rb") as f:
+            return pickle.load(f)
+
+
+class URLHandler:
+    @staticmethod
+    def is_valid_url(url):
+        parsed_url = urlsplit(url)
+        return bool(parsed_url.scheme) and bool(parsed_url.netloc)
+
+    @staticmethod
+    def extract_links(url):
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        links = []
+        for link in soup.find_all('a'):
+            href = link.get('href')
+            if href:
+                absolute_url = urljoin(url, href)
+                if URLHandler.is_valid_url(absolute_url) and (
+                        absolute_url.startswith("http://") or absolute_url.startswith("https://")):
+                    links.append(absolute_url)
+
+        return links
+
+    @staticmethod
+    def extract_links_from_websites(websites):
+        all_links = []
+
+        for website in websites:
+            links = URLHandler.extract_links(website)
+            all_links.extend(links)
+
+        return all_links
+
 # setting page title and header
 #st.set_page_config(page_title="Data Chat", page_icon=':robot_face:')
 st.markdown("<h1 stype='text-align:center;'>Data Chat</h1>", unsafe_allow_html=True)
@@ -85,56 +136,6 @@ if clear_button:
     st.session_state['total_tokens'] = []
     counter_placeholder.write(f"Total cost of this conversation: ${st.session_state['total_cost']:.5f}")
 
-# class definitions
-
-class DocumentLoader(ABC):
-    @abstractmethod
-    def load_and_split(self) -> List[str]:
-        pass
-
-
-class FAISS(BaseFAISS):
-    def save(self, file_path):
-        with open(file_path, "wb") as f:
-            pickle.dump(self, f)
-
-    @staticmethod
-    def load(file_path):
-        with open(file_path, "rb") as f:
-            return pickle.load(f)
-
-
-class URLHandler:
-    @staticmethod
-    def is_valid_url(url):
-        parsed_url = urlsplit(url)
-        return bool(parsed_url.scheme) and bool(parsed_url.netloc)
-
-    @staticmethod
-    def extract_links(url):
-        response = requests.get(url)
-        soup = BeautifulSoup(response.text, 'html.parser')
-
-        links = []
-        for link in soup.find_all('a'):
-            href = link.get('href')
-            if href:
-                absolute_url = urljoin(url, href)
-                if URLHandler.is_valid_url(absolute_url) and (
-                        absolute_url.startswith("http://") or absolute_url.startswith("https://")):
-                    links.append(absolute_url)
-
-        return links
-
-    @staticmethod
-    def extract_links_from_websites(websites):
-        all_links = []
-
-        for website in websites:
-            links = URLHandler.extract_links(website)
-            all_links.extend(links)
-
-        return all_links
 
 
 # file uploading and processing
@@ -220,11 +221,6 @@ def answer_questions(faiss_index, user_input):
     return ai_response # return the AI response
 
 
-# container for chat history
-response_container = st.container()
-# container for text box
-container = st.container()
-
 # allow users to upload multiple PDF files using the st.file_uploader function
 uploaded_files = st.file_uploader("Choose one or more PDF files", type="pdf", accept_multiple_files=True)
 
@@ -246,6 +242,10 @@ if uploaded_files: # if there are uploaded files
     embeddings = OpenAIEmbeddings('gpt-3.5-turbo', openai_api_key=key)
     faiss_index = train_or_load_model(True, faiss_obj_path, file_paths, embeddings)
 
+# container for chat history
+response_container = st.container()
+# container for text box
+container = st.container()
 
 with container:
     with st.form(key='my_form', clear_on_submit=True):
