@@ -12,9 +12,9 @@ class OpenAIEmbeddings:
             self.chat_model = openai.ChatCompletion.create(model=model_name, messages = messages)
         self.tokenizer = openai.ChatCompletion.create(model=model_name, messages=self.messages)
         #self.encoder = openai.TextEmbeddings.create(model=model_name)
-     @retry(
-        stop=stop_after_attempt(3),  # Retry for a maximum of 3 attempts
-        wait=wait_exponential(multiplier=1, min=2, max=5)  # Exponential backoff with a base of 2
+         @retry(
+            stop=stop_after_attempt(3),  # Retry for a maximum of 3 attempts
+            wait=wait_exponential(multiplier=1, min=2, max=5)  # Exponential backoff with a base of 2
     def embed(self, text):
         inputs = self.tokenizer.encode(text)
         embedding = openai.Embed.create(
