@@ -159,15 +159,11 @@ if clear_button:
 def save_uploadedfiles(uploadedfiles):
     file_paths = []
     for uploadedfile in uploadedfiles:
-        file_bytes = uploadedfile.read()  # Read the bytes of the uploaded file
-        file_name = uploadedfile.name  # Get the name of the uploaded file
-        file_path = os.path.join("data/dataset", file_name)
+        file_path = os.path.join("data/dataset", str(uuid.uuid4()) + ".pdf")  # Generate a unique file name
         with open(file_path, "wb") as f:
-            f.write(file_bytes)
+            f.write(uploadedfile)
         file_paths.append(file_path)
     return file_paths
-
-
 
 # def save_uploadedfile(uploadedfile):
 #      with open(os.path.join("data/dataset",uploadedfile.name),"wb") as f:
