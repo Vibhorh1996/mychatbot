@@ -340,13 +340,9 @@ if uploaded_files:
             st.dataframe(df.head(10))
             agent = create_pandas_dataframe_agent(OpenAI(temperature=0), df, verbose=True)
 
-        elif isinstance(file_loader, UnstructuredWordDocumentLoader):
-            # Process the unstructured Word document
-
         else:
             st.write("Incompatible file type")
-
-
+                       
 st.session_state['generated'] = []
 st.session_state['past'] = []
 st.session_state['messages'] = [
