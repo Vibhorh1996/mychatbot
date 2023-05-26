@@ -186,24 +186,37 @@ def generate_response(index,prompt):
     return response,  last_token_usage
 
 
-def get_loader(file_path_or_url):
-    if file_path_or_url.startswith("http://") or file_path_or_url.startswith("https://"):
-        handle_website = URLHandler()
-        return WebBaseLoader(handle_website.extract_links_from_websites([file_path_or_url]))
-    else:
-        mime_type, _ = mimetypes.guess_type(file_path_or_url)
-        print(f"File path or URL: {file_path_or_url}")
-        print(f"MIME type: {mime_type}")
+def get_loader(file_path_or_upload):
+    if isinstance(file_path_or_upload, str):  # File path provided
+        file_path = file_path_or_upload
+        if file_path.startswith("http://") or file_path.startswith("https://"):
+            handle_website = URLHandler()
+            return WebBaseLoader(handle_website.extract_links_from_websites([file_path]))
+        else:
+            mime_type, _ = mimetypes.guess_type(file_path)
+            print(f"File path or URL: {file_path}")
+            print(f"MIME type: {mime_type}")
 
-        if mime_type is None:
-            raise ValueError(f"Unable to determine file type for: {file_path_or_url}")
+            if mime_type is None:
+                raise ValueError(f"Unable to determine file type for: {file_path}")
 
+            if mime_type == 'application/pdf':
+                return PyPDF2.PdfReader(file_path)
+            elif mime_type == 'text/csv':
+                return CSVLoader(file_path)
+            elif mime_type in ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']:
+                return UnstructuredWordDocumentLoader(file_path)
+            else:
+                raise ValueError(f"Unsupported file type: {mime_type}")
+    else:  # File upload object provided
+        file_obj = file_path_or_upload
+        mime_type = file_obj.type
         if mime_type == 'application/pdf':
-            return PyPDF2.PdfReader(file_path_or_url)
+            return PyPDF2.PdfReader(file_obj)
         elif mime_type == 'text/csv':
-            return CSVLoader(file_path_or_url)
+            return CSVLoader(file_obj)
         elif mime_type in ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']:
-            return UnstructuredWordDocumentLoader(file_path_or_url)
+            return UnstructuredWordDocumentLoader(file_obj)
         else:
             raise ValueError(f"Unsupported file type: {mime_type}")
 
@@ -309,6 +322,7 @@ if uploaded_files:
         file_path = save_uploadedfiles(uploaded_file)  # save each file to a specific location and get its path
         file_paths.append(file_path)  # append each file path to the list
     uploaded_path = file_paths[0]  # assuming you want to assign the path of the first file to `uploaded_path`
+    file_loader = get_loader(uploaded_path)
 
 #     if uploaded_file.type == "text/csv":
 #        df  = pd.read_csv(uploaded_file)
