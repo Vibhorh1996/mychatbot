@@ -312,16 +312,16 @@ if uploaded_files:
 #        df  = pd.read_csv(uploaded_file)
 #        st.dataframe(df.head(10))
 #        agent = create_pandas_dataframe_agent(OpenAI(temperature=0),df, verbose=True)
-        if uploaded_file.type == "application/pdf":
-            embeddings = OpenAIEmbeddings(openai_api_key=key)
-            chat = ChatOpenAI(temperature=0, openai_api_key=key)
-            # train = int(input("Do you want to train the model? (1 for yes, 0 for no): "))
-            faiss_obj_path = "models/test.pickle"
-            index_name = "test"
-            faiss_index = train_or_load_model(1, faiss_obj_path, uploaded_path, index_name)
-            # answer_questions(faiss_index)
-        else:
-            st.write("Incompatible file type")
+    if uploaded_file.type == "application/pdf":
+        embeddings = OpenAIEmbeddings(openai_api_key=key)
+        chat = ChatOpenAI(temperature=0, openai_api_key=key)
+        # train = int(input("Do you want to train the model? (1 for yes, 0 for no): "))
+        faiss_obj_path = "models/test.pickle"
+        index_name = "test"
+        faiss_index = train_or_load_model(1, faiss_obj_path, uploaded_path, index_name)
+        # answer_questions(faiss_index)
+    else:
+        st.write("Incompatible file type")
 
 
 st.session_state['generated'] = []
