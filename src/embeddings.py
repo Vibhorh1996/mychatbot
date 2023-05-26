@@ -9,7 +9,7 @@ class Embed:
         self.embeddings = None
 
     def create_embeddings(self):
-        response = openai.completion.create(
+        response = openai.Completion.create(
             model=self.model,
             inputs=self.inputs,
             engine=self.engine, #removed engine param from here and from all other functions where it was taken as a param. init,create
