@@ -266,6 +266,7 @@ def answer_questions(faiss_index, user_input):
 
 df=None
 #uploaded_file = st.file_uploader("Choose a file (PDF / CSV)",accept_multiple_files=False)
+
 # allow users to upload multiple PDF files using the st.file_uploader function
 uploaded_files = st.file_uploader("Choose one or more PDF files", type="pdf", accept_multiple_files=True)
 if uploaded_files:
@@ -274,7 +275,7 @@ if uploaded_files:
         file_path = save_uploadedfile(uploaded_file) # save each file to a specific location and get its path
         file_paths.append(file_path) # append each file path to the list
 #     file_details = {"FileName":uploaded_file.name,"FileType":uploaded_file.type}
-#     uploaded_path=save_uploadedfile(uploaded_file)
+        uploaded_path=save_uploadedfile(uploaded_file)
 
 #     if uploaded_file.type == "text/csv":
 #        df  = pd.read_csv(uploaded_file)
