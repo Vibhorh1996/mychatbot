@@ -1,27 +1,21 @@
 [[source]]
-name = "pypi"
 url = "https://pypi.org/simple"
 verify_ssl = true
+name = "pypi"
 
 [packages]
-beautifulsoup4 = "*"
-faiss-cpu = "*"
-PyPDF2 = "*"
-numpy = "*"
-pandas = "*"
-python-docx = "*"
-requests = "*"
-scikit-learn = "*"
-sumy = "*"
-textract = "*"
-wikipedia-api = "*"
-text_summarizer = "*"
-pdfminer.six = "*"
-tiktoken = "*"
 streamlit = "*"
-openai = "*"
-langchain = "*"
 streamlit_chat = "*"
+llama_index = "*"
+python-dotenv = "*"
+openai = "*"
+pinecone-client = "*"
+langchain = "*"
+pypdf = "*"
+tiktoken = "*"
+bs4 = "*"
+faiss-cpu = "*"
+unstructured = "*"
 
 [dev-packages]
 
