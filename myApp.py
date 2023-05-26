@@ -304,10 +304,9 @@ uploaded_files = st.file_uploader("Choose one or more PDF files", type="pdf", ac
 if uploaded_files:
     file_paths = []  # a list to store all the file paths of uploaded files
     for uploaded_file in uploaded_files:  # loop through the uploaded files
-        file_path = save_uploadedfile(uploaded_file)  # save each file to a specific location and get its path
+        file_path = save_uploadedfiles(uploaded_file)  # save each file to a specific location and get its path
         file_paths.append(file_path)  # append each file path to the list
-        # file_details = {"FileName": uploaded_file.name, "FileType": uploaded_file.type}
-        uploaded_path = file_path  # use the saved file path instead of calling save_uploadedfile again
+    uploaded_path = save_uploadedfiles(uploaded_files)
 
 #     if uploaded_file.type == "text/csv":
 #        df  = pd.read_csv(uploaded_file)
