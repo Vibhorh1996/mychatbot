@@ -325,7 +325,7 @@ if uploaded_files:
     for uploaded_path in file_paths:
         file_loader = get_loader(uploaded_path)
 
-        if file_loader.__class__.__name__ == "PdfFileReader":
+        if isinstance(file_loader, PyPDF2.PdfReader):
             embeddings = OpenAIEmbeddings(openai_api_key=key)
             chat = ChatOpenAI(temperature=0, openai_api_key=key)
 
