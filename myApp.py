@@ -156,10 +156,19 @@ if clear_button:
 #     last_token_usage = index.llm_predictor.last_token_usage
 #     st.write(f"last_token_usage={last_token_usage}")
 
-def save_uploadedfile(uploadedfile):
-     with open(os.path.join("data/dataset",uploadedfile.name),"wb") as f:
-         f.write(uploadedfile.getbuffer())
-     return "data/dataset/"+uploadedfile.name
+def save_uploadedfiles(uploadedfiles):
+    file_paths = []
+    for uploadedfile in uploadedfiles:
+        with open(os.path.join("data/dataset", uploadedfile.name), "wb") as f:
+            f.write(uploadedfile.getbuffer())
+        file_paths.append("data/dataset/" + uploadedfile.name)
+    return file_paths
+
+
+# def save_uploadedfile(uploadedfile):
+#      with open(os.path.join("data/dataset",uploadedfile.name),"wb") as f:
+#          f.write(uploadedfile.getbuffer())
+#      return "data/dataset/"+uploadedfile.name
 
 
 def generate_response(index,prompt):
@@ -293,12 +302,12 @@ df=None
 # allow users to upload multiple PDF files using the st.file_uploader function
 uploaded_files = st.file_uploader("Choose one or more PDF files", type="pdf", accept_multiple_files=True)
 if uploaded_files:
-    file_paths = [] # a list to store all the file paths of uploaded files
-    for uploaded_file in uploaded_files: # loop through the uploaded files
-        file_path = save_uploadedfile(uploaded_file) # save each file to a specific location and get its path
-        file_paths.append(file_path) # append each file path to the list
-#     file_details = {"FileName":uploaded_file.name,"FileType":uploaded_file.type}
-        uploaded_path=save_uploadedfile(uploaded_file)
+    file_paths = []  # a list to store all the file paths of uploaded files
+    for uploaded_file in uploaded_files:  # loop through the uploaded files
+        file_path = save_uploadedfile(uploaded_file)  # save each file to a specific location and get its path
+        file_paths.append(file_path)  # append each file path to the list
+        # file_details = {"FileName": uploaded_file.name, "FileType": uploaded_file.type}
+        uploaded_path = file_path  # use the saved file path instead of calling save_uploadedfile again
 
 #     if uploaded_file.type == "text/csv":
 #        df  = pd.read_csv(uploaded_file)
