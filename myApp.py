@@ -191,26 +191,39 @@ def get_loader(file_path_or_url):
         else:
             raise ValueError(f"Unsupported file type: {mime_type}")
 
-def train_or_load_model(train, faiss_obj_path, file_path, idx_name):
+# def train_or_load_model(train, faiss_obj_path, file_path, idx_name):
+#     if train:
+#         loader = get_loader(file_path)
+#         pages = loader.load_and_split()
+
+#         # if os.path.exists(faiss_obj_path):
+#         #     faiss_index = FAISS.load(faiss_obj_path)
+#         #     new_embeddings = faiss_index.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
+#         #     new_embeddings.save(faiss_obj_path)
+#         # else:
+#         #     # faiss_index = FAISS.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
+#         #     faiss_index = FAISS.from_documents(pages, embeddings)
+#         faiss_index = FAISS.from_documents(pages, embeddings)
+
+#         faiss_index.save(faiss_obj_path)
+
+#         return FAISS.load(faiss_obj_path)
+#     else:
+#         return FAISS.load(faiss_obj_path)
+
+def train_or_load_model(train, faiss_obj_path, file_paths, embeddings):
     if train:
-        loader = get_loader(file_path)
-        pages = loader.load_and_split()
+        pages = [] # a list to store all the pages from all the files
+        for file_path in file_paths: # loop through the file paths
+            loader = get_loader(file_path) # get the loader for each file
+            pages.extend(loader.load_and_split()) # load and split the pages and append them to the list
 
-        # if os.path.exists(faiss_obj_path):
-        #     faiss_index = FAISS.load(faiss_obj_path)
-        #     new_embeddings = faiss_index.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
-        #     new_embeddings.save(faiss_obj_path)
-        # else:
-        #     # faiss_index = FAISS.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
-        #     faiss_index = FAISS.from_documents(pages, embeddings)
-        faiss_index = FAISS.from_documents(pages, embeddings)
+        faiss_index = FAISS.from_documents(pages, embeddings) # create a single FAISS index from all the pages
+        faiss_index.save(faiss_obj_path) # save the FAISS index to a specific location
 
-        faiss_index.save(faiss_obj_path)
-
-        return FAISS.load(faiss_obj_path)
+        return FAISS.load(faiss_obj_path) # return the loaded FAISS index
     else:
-        return FAISS.load(faiss_obj_path)
-
+        return FAISS.load(faiss_obj_path) # return the loaded FAISS index
 
 def answer_questions(faiss_index, user_input):
     messages = [
@@ -252,25 +265,31 @@ def answer_questions(faiss_index, user_input):
 
 
 df=None
-uploaded_file = st.file_uploader("Choose a file (PDF / CSV)",accept_multiple_files=False)
+#uploaded_file = st.file_uploader("Choose a file (PDF / CSV)",accept_multiple_files=False)
+# allow users to upload multiple PDF files using the st.file_uploader function
+uploaded_files = st.file_uploader("Choose one or more PDF files", type="pdf", accept_multiple_files=True)
 if uploaded_file is not None:
-    file_details = {"FileName":uploaded_file.name,"FileType":uploaded_file.type}
-    uploaded_path=save_uploadedfile(uploaded_file)
+    file_paths = [] # a list to store all the file paths of uploaded files
+    for uploaded_file in uploaded_files: # loop through the uploaded files
+        file_path = save_uploadedfile(uploaded_file) # save each file to a specific location and get its path
+        file_paths.append(file_path) # append each file path to the list
+#     file_details = {"FileName":uploaded_file.name,"FileType":uploaded_file.type}
+#     uploaded_path=save_uploadedfile(uploaded_file)
 
-    if uploaded_file.type == "text/csv":
-       df  = pd.read_csv(uploaded_file)
-       st.dataframe(df.head(10))
-       agent = create_pandas_dataframe_agent(OpenAI(temperature=0),df, verbose=True)
-    elif uploaded_file.type == "application/pdf":
-        embeddings = OpenAIEmbeddings(openai_api_key=key)
-        chat = ChatOpenAI(temperature=0, openai_api_key=key)
-        # train = int(input("Do you want to train the model? (1 for yes, 0 for no): "))
-        faiss_obj_path = "models/test.pickle"
-        index_name = "test"
-        faiss_index = train_or_load_model(1, faiss_obj_path, uploaded_path, index_name)
-        # answer_questions(faiss_index)
-    else:
-        st.write("Incompatible file type")
+#     if uploaded_file.type == "text/csv":
+#        df  = pd.read_csv(uploaded_file)
+#        st.dataframe(df.head(10))
+#        agent = create_pandas_dataframe_agent(OpenAI(temperature=0),df, verbose=True)
+        if uploaded_file.type == "application/pdf":
+            embeddings = OpenAIEmbeddings(openai_api_key=key)
+            chat = ChatOpenAI(temperature=0, openai_api_key=key)
+            # train = int(input("Do you want to train the model? (1 for yes, 0 for no): "))
+            faiss_obj_path = "models/test.pickle"
+            index_name = "test"
+            faiss_index = train_or_load_model(1, faiss_obj_path, uploaded_path, index_name)
+            # answer_questions(faiss_index)
+        else:
+            st.write("Incompatible file type")
 
 
 st.session_state['generated'] = []
@@ -298,11 +317,12 @@ with container:
         submit_button = st.form_submit_button(label='Send')
 
     if submit_button and user_input:
+        
         # output, last_token_count = generate_response(index,user_input)
-        if uploaded_file.type == "text/csv":
-            output = agent.run(user_input)
-        elif uploaded_file.type == "application/pdf":
-            output = answer_questions(faiss_index, user_input)    
+#         if uploaded_file.type == "text/csv":
+#             output = agent.run(user_input)
+#         elif uploaded_file.type == "application/pdf":
+        output = answer_questions(faiss_index, user_input)    
         #st.write(output)
         #total_tokens = last_token_count
         total_tokens = 0
