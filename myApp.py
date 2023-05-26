@@ -182,6 +182,9 @@ def get_loader(file_path_or_url):
     else:
         mime_type, _ = mimetypes.guess_type(file_path_or_url)
 
+        if mime_type is None:
+            raise ValueError(f"Unable to determine file type for: {file_path_or_url}")
+
         if mime_type == 'application/pdf':
             return PyPDFLoader(file_path_or_url)
         elif mime_type == 'text/csv':
