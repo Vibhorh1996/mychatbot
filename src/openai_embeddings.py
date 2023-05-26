@@ -21,8 +21,8 @@ class OpenAIEmbeddings:
             embedding = Embed.create(
                 model=self.model_name,
                 inputs=tokens,
-                engine="davinci-codex",
-                prompt_label="text"
+                engine="davinci-codex"
+                #prompt_label="text"
             )
             embeddings.append(embedding.choices[0].doc_embeddings)
 
