@@ -181,6 +181,8 @@ def get_loader(file_path_or_url):
         return WebBaseLoader(handle_website.extract_links_from_websites([file_path_or_url]))
     else:
         mime_type, _ = mimetypes.guess_type(file_path_or_url)
+        print(f"File path or URL: {file_path_or_url}")
+        print(f"MIME type: {mime_type}")
 
         if mime_type is None:
             raise ValueError(f"Unable to determine file type for: {file_path_or_url}")
