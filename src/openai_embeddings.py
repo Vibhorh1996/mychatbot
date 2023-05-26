@@ -38,18 +38,16 @@ class ChatOpenAI:
         self.messages = messages
         self.chat_model = openai.ChatCompletion.create(model=model_name, messages=self.messages)
 
-#     @retry(
-#         stop=stop_after_attempt(3),
-#         wait=wait_exponential(multiplier=1, min=2, max=5)
-#     )
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=5)
+    )
     def generate_response(self, input_text):
-        response = self.chat_model.create(
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": input_text}
-            ]
-        )
-        return response.choices[0].message.content
+         st.session_state['messages'].append({"role":"user","content":prompt})
+
+        response = self.chat_model.create(messages=messages)
+        st.session_state['messages'].append({"role":"DataChat","content":response})
+        return response
     
 #     def generate_response(self, input_text):
 #         messages = self.messages + [
