@@ -268,7 +268,7 @@ df=None
 #uploaded_file = st.file_uploader("Choose a file (PDF / CSV)",accept_multiple_files=False)
 # allow users to upload multiple PDF files using the st.file_uploader function
 uploaded_files = st.file_uploader("Choose one or more PDF files", type="pdf", accept_multiple_files=True)
-if uploaded_file is not None:
+if uploaded_file:
     file_paths = [] # a list to store all the file paths of uploaded files
     for uploaded_file in uploaded_files: # loop through the uploaded files
         file_path = save_uploadedfile(uploaded_file) # save each file to a specific location and get its path
