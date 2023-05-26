@@ -7,6 +7,7 @@ import os
 import json
 import pickle
 import uuid
+import PyPDF2
 from abc import ABC, abstractmethod
 from typing import List
 from langchain.agents import create_pandas_dataframe_agent
@@ -198,7 +199,7 @@ def get_loader(file_path_or_url):
             raise ValueError(f"Unable to determine file type for: {file_path_or_url}")
 
         if mime_type == 'application/pdf':
-            return PyPDFLoader(file_path_or_url)
+            return PyPDF2.PdfReader(file_path_or_url)
         elif mime_type == 'text/csv':
             return CSVLoader(file_path_or_url)
         elif mime_type in ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']:
