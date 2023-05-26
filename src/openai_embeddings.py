@@ -43,13 +43,13 @@ class ChatOpenAI:
         wait=wait_exponential(multiplier=1, min=2, max=5)
     )
     def generate_response(self, input_text):
-    response = self.chat_model.create(
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": input_text}
-        ]
-    )
-    return response.choices[0].message.content
+        response = self.chat_model.create(
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": input_text}
+            ]
+        )
+        return response.choices[0].message.content
     
 #     def generate_response(self, input_text):
 #         messages = self.messages + [
