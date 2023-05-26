@@ -340,9 +340,6 @@ if uploaded_files:
             st.dataframe(df.head(10))
             agent = create_pandas_dataframe_agent(OpenAI(temperature=0), df, verbose=True)
 
-        elif file_loader.__class__.__name__ == "UnstructuredWordDocumentLoader":
-            # Process the unstructured Word document
-
         else:
             st.write("Incompatible file type")
 
