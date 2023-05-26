@@ -6,6 +6,7 @@ import pandas as pd
 import os
 import json
 import pickle
+import uuid
 from abc import ABC, abstractmethod
 from typing import List
 from langchain.agents import create_pandas_dataframe_agent
