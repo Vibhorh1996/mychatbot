@@ -10,7 +10,7 @@ class OpenAIEmbeddings:
         if messages is None:
             messages = [{"role": "system", "content": "You are a helpful assistant."}]
         self.messages = messages
-        self.tokenizer = Embed.create(model=model_name, messages=self.messages)
+        self.tokenizer = Embed.create(model=model_name, inputs=self.messages)
         self.chat_model = openai.ChatCompletion.create(model=model_name, messages=self.messages)
 
     def embed(self, texts):
@@ -42,8 +42,8 @@ class ChatOpenAI:
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=5)
     )
-    def generate_response(self, input_text):
-        st.session_state['messages'].append({"role":"user","content":input_text})
+    def generate_response(self, inputs):
+        st.session_state['messages'].append({"role":"user","content":inputs})
         response = self.chat_model.create(messages=messages)
         st.session_state['messages'].append({"role":"DataChat","content":response})
         return response
