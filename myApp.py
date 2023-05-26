@@ -321,24 +321,30 @@ if uploaded_files:
     for uploaded_file in uploaded_files:  # loop through the uploaded files
         file_path = save_uploadedfiles(uploaded_file)  # save each file to a specific location and get its path
         file_paths.append(file_path)  # append each file path to the list
-    uploaded_path = file_paths[0]  # assuming you want to assign the path of the first file to `uploaded_path`
-    file_loader = get_loader(uploaded_path)
 
-#     if uploaded_file.type == "text/csv":
-#        df  = pd.read_csv(uploaded_file)
-#        st.dataframe(df.head(10))
-#        agent = create_pandas_dataframe_agent(OpenAI(temperature=0),df, verbose=True)
-    if uploaded_file.type == "application/pdf":
-        embeddings = OpenAIEmbeddings(openai_api_key=key)
-        chat = ChatOpenAI(temperature=0, openai_api_key=key)
-        # train = int(input("Do you want to train the model? (1 for yes, 0 for no): "))
-        faiss_obj_path = "models/test.pickle"
-        index_name = "test"
-        faiss_index = train_or_load_model(1, faiss_obj_path, uploaded_path, index_name)
-        # answer_questions(faiss_index)
-    else:
-        st.write("Incompatible file type")
+    for uploaded_path in file_paths:
+        file_loader = get_loader(uploaded_path)
 
+        if file_loader.__class__.__name__ == "PdfFileReader":
+            embeddings = OpenAIEmbeddings(openai_api_key=key)
+            chat = ChatOpenAI(temperature=0, openai_api_key=key)
+
+            faiss_obj_path = "models/test.pickle"
+            index_name = "test"
+            faiss_index = train_or_load_model(1, faiss_obj_path, uploaded_path, index_name)
+
+            # Process the PDF file with the faiss_index and other required objects
+
+        elif file_loader.__class__.__name__ == "CSVLoader":
+            df = pd.read_csv(uploaded_path)
+            st.dataframe(df.head(10))
+            agent = create_pandas_dataframe_agent(OpenAI(temperature=0), df, verbose=True)
+
+        elif file_loader.__class__.__name__ == "UnstructuredWordDocumentLoader":
+            # Process the unstructured Word document
+
+        else:
+            st.write("Incompatible file type")
 
 st.session_state['generated'] = []
 st.session_state['past'] = []
