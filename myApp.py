@@ -219,10 +219,9 @@ def train_or_load_model(train, faiss_obj_path, file_paths, idx_name):
 
         faiss_index.save(faiss_obj_path)
 
+        return faiss_index  # Return the faiss_index object
     else:
-        faiss_index = FAISS.load(faiss_obj_path)
-
-    return faiss_index
+        return FAISS.load(faiss_obj_path)
 
 def answer_questions(faiss_index, user_input):
     messages = [
@@ -255,7 +254,6 @@ def answer_questions(faiss_index, user_input):
 
 pdf_files = []
 csv_files = []
-faiss_index = None  # Initialize faiss_index
 
 uploaded_files = st.file_uploader("Choose files", accept_multiple_files=True)
 
@@ -296,6 +294,10 @@ if len(pdf_files) > 0:
         faiss_obj_path = "models/test.pickle"
         index_name = "test"
         faiss_index = train_or_load_model(True, faiss_obj_path, file_paths, index_name)
+
+        # Check if faiss_index is not None before using it in the answer_questions section
+        if faiss_index is not None:
+            output = answer_questions(faiss_index, user_input)
 else:
     st.write("No PDF files uploaded.")
 
@@ -306,10 +308,6 @@ if len(csv_files) > 0:
         agent = create_pandas_dataframe_agent(OpenAI(temperature=0), df, verbose=True)
 else:
     st.write("No CSV files uploaded.")
-
-# Check if faiss_index is defined before using it in the answer_questions section
-if faiss_index is not None:
-    output = answer_questions(faiss_index, user_input)
 
 st.session_state['generated'] = []
 st.session_state['past'] = []
