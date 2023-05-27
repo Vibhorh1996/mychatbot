@@ -13,6 +13,8 @@ from typing import List
 from langchain.agents import create_pandas_dataframe_agent
 import requests
 import mimetypes
+from sentence_transformers import SentenceTransformer
+import textract
 from bs4 import BeautifulSoup
 import tiktoken
 from urllib.parse import urljoin, urlsplit
@@ -196,6 +198,15 @@ def get_loaders(file_paths):
             raise ValueError(f"Unsupported file type: {mime_type}")
     return loaders
 
+def generate_embedding(file_path):
+    # Extract text from PDF using textract
+    text = textract.process(file_path).decode('utf-8')
+    
+    # Generate embeddings using a pre-trained SentenceTransformer model
+    model = SentenceTransformer('distilbert-base-nli-mean-tokens')
+    embeddings = model.encode([text])
+    
+    return embeddings[0]
 
 def train_or_load_model(train, faiss_obj_path, file_paths, idx_name):
     if train:
@@ -272,11 +283,18 @@ if len(pdf_files) > 0:
                 st.write(f"Ignoring unsupported file: {file.name}")
                 file_paths.remove(temp_file.name)
 
-    embeddings = OpenAIEmbeddings(openai_api_key=key)
-    chat = ChatOpenAI(temperature=0, openai_api_key=key)
-    faiss_obj_path = "models/test.pickle"
-    index_name = "test"
-    faiss_index = train_or_load_model(True, faiss_obj_path, file_paths, index_name)
+    if len(file_paths) > 0:
+        embeddings = []
+        for file_path in file_paths:
+            # Generate embeddings for each PDF file
+            embedding = generate_embedding(file_path)  # Replace with your actual embedding generation code
+            embeddings.append(embedding)
+
+        embeddings = OpenAIEmbeddings(openai_api_key=key)
+        chat = ChatOpenAI(temperature=0, openai_api_key=key)
+        faiss_obj_path = "models/test.pickle"
+        index_name = "test"
+        faiss_index = train_or_load_model(True, faiss_obj_path, file_paths, index_name)
 else:
     st.write("No PDF files uploaded.")
 
