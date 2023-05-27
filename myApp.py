@@ -219,10 +219,10 @@ def train_or_load_model(train, faiss_obj_path, file_paths, idx_name):
 
         faiss_index.save(faiss_obj_path)
 
-        return FAISS.load(faiss_obj_path)
     else:
-        return FAISS.load(faiss_obj_path)
+        faiss_index = FAISS.load(faiss_obj_path)
 
+    return faiss_index
 
 def answer_questions(faiss_index, user_input):
     messages = [
