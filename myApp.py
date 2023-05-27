@@ -6,8 +6,6 @@ import pandas as pd
 import os
 import json
 import pickle
-import uuid
-import PyPDF2
 from abc import ABC, abstractmethod
 from typing import List
 from langchain.agents import create_pandas_dataframe_agent
@@ -161,16 +159,12 @@ if clear_button:
 def save_uploadedfiles(uploadedfiles):
     file_paths = []
     for uploadedfile in uploadedfiles:
-        file_path = os.path.join("data/dataset", str(uuid.uuid4()) + ".pdf")  # Generate a unique file name
-        with open(file_path, "wb") as f:
-            f.write(uploadedfile)
-        file_paths.append(file_path)
+        if uploadedfile.content_type == 'application/pdf':
+            file_path = os.path.join("uploads", uploadedfile.name)
+            with open(file_path, "wb") as f:
+                f.write(uploadedfile.getbuffer())
+            file_paths.append(file_path)
     return file_paths
-
-# def save_uploadedfile(uploadedfile):
-#      with open(os.path.join("data/dataset",uploadedfile.name),"wb") as f:
-#          f.write(uploadedfile.getbuffer())
-#      return "data/dataset/"+uploadedfile.name
 
 
 def generate_response(index,prompt):
@@ -185,92 +179,37 @@ def generate_response(index,prompt):
 
     return response,  last_token_usage
 
+def get_loaders(file_paths):
+    loaders = []
+    for file_path in file_paths:
+        mime_type, _ = mimetypes.guess_type(file_path)
 
-def get_loader(file_path_or_upload):
-    if isinstance(file_path_or_upload, str):  # File path provided
-        file_path = file_path_or_upload
-        if file_path.startswith("http://") or file_path.startswith("https://"):
-            handle_website = URLHandler()
-            return WebBaseLoader(handle_website.extract_links_from_websites([file_path]))
-        else:
-            mime_type, _ = mimetypes.guess_type(file_path)
-            print(f"File path or URL: {file_path}")
-            print(f"MIME type: {mime_type}")
-
-            if mime_type is None:
-                raise ValueError(f"Unable to determine file type for: {file_path}")
-
-            if mime_type == 'application/pdf':
-                return PyPDF2.PdfReader(file_path)
-            elif mime_type == 'text/csv':
-                return CSVLoader(file_path)
-            elif mime_type in ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']:
-                return UnstructuredWordDocumentLoader(file_path)
-            else:
-                raise ValueError(f"Unsupported file type: {mime_type}")
-    else:  # File upload object provided
-        file_obj = file_path_or_upload
-        mime_type = file_obj.type
         if mime_type == 'application/pdf':
-            return PyPDF2.PdfReader(file_obj)
+            loaders.append(PyPDFLoader(file_path))
         elif mime_type == 'text/csv':
-            return CSVLoader(file_obj)
+            loaders.append(CSVLoader(file_path))
         elif mime_type in ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']:
-            return UnstructuredWordDocumentLoader(file_obj)
+            loaders.append(UnstructuredWordDocumentLoader(file_path))
         else:
             raise ValueError(f"Unsupported file type: {mime_type}")
+    return loaders
 
 
-# def get_loader(file_path_or_url):
-#     if file_path_or_url.startswith("http://") or file_path_or_url.startswith("https://"):
-#         handle_website = URLHandler()
-#         return WebBaseLoader(handle_website.extract_links_from_websites([file_path_or_url]))
-#     else:
-#         mime_type, _ = mimetypes.guess_type(file_path_or_url)
-
-#         if mime_type == 'application/pdf':
-#             return PyPDFLoader(file_path_or_url)
-#         elif mime_type == 'text/csv':
-#             return CSVLoader(file_path_or_url)
-#         elif mime_type in ['application/msword',
-#                            'application/vnd.openxmlformats-officedocument.wordprocessingml.document']:
-#             return UnstructuredWordDocumentLoader(file_path_or_url)
-#         else:
-#             raise ValueError(f"Unsupported file type: {mime_type}")
-
-# def train_or_load_model(train, faiss_obj_path, file_path, idx_name):
-#     if train:
-#         loader = get_loader(file_path)
-#         pages = loader.load_and_split()
-
-#         # if os.path.exists(faiss_obj_path):
-#         #     faiss_index = FAISS.load(faiss_obj_path)
-#         #     new_embeddings = faiss_index.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
-#         #     new_embeddings.save(faiss_obj_path)
-#         # else:
-#         #     # faiss_index = FAISS.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
-#         #     faiss_index = FAISS.from_documents(pages, embeddings)
-#         faiss_index = FAISS.from_documents(pages, embeddings)
-
-#         faiss_index.save(faiss_obj_path)
-
-#         return FAISS.load(faiss_obj_path)
-#     else:
-#         return FAISS.load(faiss_obj_path)
-
-def train_or_load_model(train, faiss_obj_path, file_paths, embeddings):
+def train_or_load_model(train, faiss_obj_path, file_paths, idx_name):
     if train:
-        pages = [] # a list to store all the pages from all the files
-        for file_path in file_paths: # loop through the file paths
-            loader = get_loader(file_path) # get the loader for each file
-            pages.extend(loader.load_and_split()) # load and split the pages and append them to the list
+        loaders = get_loaders(file_paths)
+        pages = []
+        for loader in loaders:
+            pages.extend(loader.load_and_split())
 
-        faiss_index = FAISS.from_documents(pages, embeddings) # create a single FAISS index from all the pages
-        faiss_index.save(faiss_obj_path) # save the FAISS index to a specific location
+        faiss_index = FAISS.from_documents(pages, embeddings)
 
-        return FAISS.load(faiss_obj_path) # return the loaded FAISS index
+        faiss_index.save(faiss_obj_path)
+
+        return FAISS.load(faiss_obj_path)
     else:
-        return FAISS.load(faiss_obj_path) # return the loaded FAISS index
+        return FAISS.load(faiss_obj_path)
+
 
 def answer_questions(faiss_index, user_input):
     messages = [
@@ -281,11 +220,6 @@ def answer_questions(faiss_index, user_input):
                     'the info. Never break character.')
     ]
 
-    # while True:
-        # question = input("Ask a question (type 'stop' to end): ")
-        # if question.lower() == "stop":
-        #     break
-
     docs = faiss_index.similarity_search(query=user_input, k=2)
 
     main_content = user_input + "\n\n"
@@ -294,12 +228,8 @@ def answer_questions(faiss_index, user_input):
 
     messages.append(HumanMessage(content=main_content))
     ai_response = chat(messages).content
-    messages.pop()
-    messages.append(HumanMessage(content=user_input))
-    messages.append(AIMessage(content=ai_response))
 
     return ai_response
-
 
 # def main():
 #     faiss_obj_path = "/Users/puneetsachdeva/Downloads/langchain-chat-main/models/test.pickle"
@@ -311,38 +241,35 @@ def answer_questions(faiss_index, user_input):
 #     answer_questions(faiss_index)
 
 
-df=None
-#uploaded_file = st.file_uploader("Choose a file (PDF / CSV)",accept_multiple_files=False)
+df = None
+uploaded_files = st.file_uploader("Choose PDF files", accept_multiple_files=True)
+pdf_files = []
+if uploaded_files is not None:
+    for uploaded_file in uploaded_files:
+        if uploaded_file.type == "application/pdf":
+            pdf_files.append(uploaded_file)
+        else:
+            st.write(f"Ignoring incompatible file: {uploaded_file.name}")
 
-# allow users to upload multiple PDF files using the st.file_uploader function
-uploaded_files = st.file_uploader("Choose one or more PDF files", type="pdf", accept_multiple_files=True)
-if uploaded_files:
-    file_paths = []  # a list to store all the file paths of uploaded files
-    for uploaded_file in uploaded_files:  # loop through the uploaded files
-        file_path = save_uploadedfiles(uploaded_file)  # save each file to a specific location and get its path
-        file_paths.append(file_path)  # append each file path to the list
+if len(pdf_files) > 0:
+    embeddings = OpenAIEmbeddings(openai_api_key=key)
+    chat = ChatOpenAI(temperature=0, openai_api_key=key)
+    faiss_obj_path = "models/test.pickle"
+    index_name = "test"
+    faiss_index = train_or_load_model(True, faiss_obj_path, pdf_files, index_name)
+else:
+    st.write("No PDF files uploaded.")
 
-    for uploaded_path in file_paths:
-        file_loader = get_loader(uploaded_path)
-
-        if isinstance(file_loader, PyPDF2.PdfReader):
-            embeddings = OpenAIEmbeddings(openai_api_key=key)
-            chat = ChatOpenAI(temperature=0, openai_api_key=key)
-
-            faiss_obj_path = "models/test.pickle"
-            index_name = "test"
-            faiss_index = train_or_load_model(1, faiss_obj_path, uploaded_path, index_name)
-
-            # Process the PDF file with the faiss_index and other required objects
-
-        elif isinstance(file_loader, CSVLoader):
-            df = pd.read_csv(uploaded_path)
+# Rest of the code for CSV files
+if uploaded_files is not None:
+    for uploaded_file in uploaded_files:
+        if uploaded_file.type == "text/csv":
+            df = pd.read_csv(uploaded_file)
             st.dataframe(df.head(10))
             agent = create_pandas_dataframe_agent(OpenAI(temperature=0), df, verbose=True)
-
         else:
-            st.write("Incompatible file type")
-                       
+            st.write(f"Ignoring incompatible file: {uploaded_file.name}")
+
 st.session_state['generated'] = []
 st.session_state['past'] = []
 st.session_state['messages'] = [
@@ -368,20 +295,19 @@ with container:
         submit_button = st.form_submit_button(label='Send')
 
     if submit_button and user_input:
-        
-        # output, last_token_count = generate_response(index,user_input)
-#         if uploaded_file.type == "text/csv":
-#             output = agent.run(user_input)
-#         elif uploaded_file.type == "application/pdf":
-        output = answer_questions(faiss_index, user_input)    
-        #st.write(output)
-        #total_tokens = last_token_count
-        total_tokens = 0
-        st.session_state['past'].append(user_input)
-        # st.session_state['generated'].append(output.response)
-        st.session_state['generated'].append(output)
-        st.session_state['model_name'].append(model_name)
-        st.session_state['total_tokens'].append(total_tokens)
+        if uploaded_files is not None:
+            for uploaded_file in uploaded_files:
+                if uploaded_file.type == "text/csv":
+                    output = agent.run(user_input)
+                elif uploaded_file.type == "application/pdf":
+                    output = answer_questions(faiss_index, user_input)
+                total_tokens = 0
+                st.session_state['past'].append(user_input)
+                st.session_state['generated'].append(output)
+                st.session_state['model_name'].append(model_name)
+                st.session_state['total_tokens'].append(total_tokens)
+        else:
+            st.write("No files uploaded.")
 
         # from https://openai.com/pricing#language-models
         if model_name == "GPT-3.5":
