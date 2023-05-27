@@ -6,6 +6,7 @@ import pandas as pd
 import os
 import json
 import pickle
+import imghdr
 import tempfile
 from abc import ABC, abstractmethod
 from typing import List
@@ -264,6 +265,13 @@ if len(pdf_files) > 0:
             temp_file.write(file.read())
             file_paths.append(temp_file.name)
 
+            # Detect MIME type using imghdr module
+            temp_file.seek(0)
+            mime_type = imghdr.what(temp_file.name)
+            if mime_type != "pdf":
+                st.write(f"Ignoring unsupported file: {file.name}")
+                file_paths.remove(temp_file.name)
+
     embeddings = OpenAIEmbeddings(openai_api_key=key)
     chat = ChatOpenAI(temperature=0, openai_api_key=key)
     faiss_obj_path = "models/test.pickle"
@@ -279,7 +287,6 @@ if len(csv_files) > 0:
         agent = create_pandas_dataframe_agent(OpenAI(temperature=0), df, verbose=True)
 else:
     st.write("No CSV files uploaded.")
-
 
 st.session_state['generated'] = []
 st.session_state['past'] = []
