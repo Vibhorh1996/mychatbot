@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 streamlit = "*"
 streamlit_chat = "*"
+sentence-transformers = "*"
 llama_index = "*"
 python-dotenv = "*"
 openai = "*"
