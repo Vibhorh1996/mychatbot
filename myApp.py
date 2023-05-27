@@ -241,13 +241,17 @@ def answer_questions(faiss_index, user_input):
 #     answer_questions(faiss_index)
 
 
-df = None
-uploaded_files = st.file_uploader("Choose PDF files", accept_multiple_files=True)
 pdf_files = []
+csv_files = []
+
+uploaded_files = st.file_uploader("Choose files", accept_multiple_files=True)
+
 if uploaded_files is not None:
     for uploaded_file in uploaded_files:
         if uploaded_file.type == "application/pdf":
             pdf_files.append(uploaded_file)
+        elif uploaded_file.type == "text/csv":
+            csv_files.append(uploaded_file)
         else:
             st.write(f"Ignoring incompatible file: {uploaded_file.name}")
 
@@ -260,15 +264,13 @@ if len(pdf_files) > 0:
 else:
     st.write("No PDF files uploaded.")
 
-# Rest of the code for CSV files
-if uploaded_files is not None:
-    for uploaded_file in uploaded_files:
-        if uploaded_file.type == "text/csv":
-            df = pd.read_csv(uploaded_file)
-            st.dataframe(df.head(10))
-            agent = create_pandas_dataframe_agent(OpenAI(temperature=0), df, verbose=True)
-        else:
-            st.write(f"Ignoring incompatible file: {uploaded_file.name}")
+if len(csv_files) > 0:
+    for uploaded_file in csv_files:
+        df = pd.read_csv(uploaded_file)
+        st.dataframe(df.head(10))
+        agent = create_pandas_dataframe_agent(OpenAI(temperature=0), df, verbose=True)
+else:
+    st.write("No CSV files uploaded.")
 
 st.session_state['generated'] = []
 st.session_state['past'] = []
