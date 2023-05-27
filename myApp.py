@@ -6,6 +6,7 @@ import pandas as pd
 import os
 import json
 import pickle
+import tempfile
 from abc import ABC, abstractmethod
 from typing import List
 from langchain.agents import create_pandas_dataframe_agent
@@ -256,7 +257,12 @@ if uploaded_files is not None:
             st.write(f"Ignoring incompatible file: {uploaded_file.name}")
 
 if len(pdf_files) > 0:
-    file_paths = [st.get_temp_file_path(file) for file in pdf_files]
+    file_paths = []
+    for file in pdf_files:
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            temp_file.write(file.read())
+            file_paths.append(temp_file.name)
+
     embeddings = OpenAIEmbeddings(openai_api_key=key)
     chat = ChatOpenAI(temperature=0, openai_api_key=key)
     faiss_obj_path = "models/test.pickle"
