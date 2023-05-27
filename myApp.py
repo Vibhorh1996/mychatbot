@@ -1,6 +1,5 @@
 import streamlit as st
 from streamlit_chat import message
-import streamlit.uploaded_file_manager as uploaded_file_manager
 import pandas as pd
 # from llama_index.indices.struct_store import GPTPandasIndex
 # from llama_index import SimpleDirectoryReader, GPTSimpleVectorIndex
@@ -257,7 +256,7 @@ if uploaded_files is not None:
             st.write(f"Ignoring incompatible file: {uploaded_file.name}")
 
 if len(pdf_files) > 0:
-    file_paths = [uploaded_file_manager.get_filepath(file) for file in pdf_files]
+    file_paths = [file.name for file in pdf_files]
     embeddings = OpenAIEmbeddings(openai_api_key=key)
     chat = ChatOpenAI(temperature=0, openai_api_key=key)
     faiss_obj_path = "models/test.pickle"
@@ -265,14 +264,6 @@ if len(pdf_files) > 0:
     faiss_index = train_or_load_model(True, faiss_obj_path, file_paths, index_name)
 else:
     st.write("No PDF files uploaded.")
-
-if len(csv_files) > 0:
-    for uploaded_file in csv_files:
-        df = pd.read_csv(uploaded_file)
-        st.dataframe(df.head(10))
-        agent = create_pandas_dataframe_agent(OpenAI(temperature=0), df, verbose=True)
-else:
-    st.write("No CSV files uploaded.")
 
 if len(csv_files) > 0:
     for uploaded_file in csv_files:
