@@ -241,7 +241,6 @@ def answer_questions(faiss_index, user_input):
 #     faiss_index = train_or_load_model(train, faiss_obj_path, file_path, index_name)
 #     answer_questions(faiss_index)
 
-
 pdf_files = []
 csv_files = []
 
@@ -280,6 +279,7 @@ if len(csv_files) > 0:
         agent = create_pandas_dataframe_agent(OpenAI(temperature=0), df, verbose=True)
 else:
     st.write("No CSV files uploaded.")
+
 
 st.session_state['generated'] = []
 st.session_state['past'] = []
