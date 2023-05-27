@@ -249,9 +249,11 @@ uploaded_files = st.file_uploader("Choose files", accept_multiple_files=True)
 
 if uploaded_files is not None:
     for uploaded_file in uploaded_files:
-        if uploaded_file.type == "application/pdf":
+        file_extension = uploaded_file.name.split(".")[-1]
+        
+        if file_extension.lower() == "pdf":
             pdf_files.append(uploaded_file)
-        elif uploaded_file.type == "text/csv":
+        elif file_extension.lower() == "csv":
             csv_files.append(uploaded_file)
         else:
             st.write(f"Ignoring incompatible file: {uploaded_file.name}")
