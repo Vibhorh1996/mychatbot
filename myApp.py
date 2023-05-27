@@ -295,7 +295,6 @@ if len(pdf_files) > 0:
         index_name = "test"
         faiss_index = train_or_load_model(True, faiss_obj_path, file_paths, index_name)
 
-        # Check if faiss_index is not None before using it in the answer_questions section
         if faiss_index is not None:
             output = answer_questions(faiss_index, user_input)
 else:
@@ -308,6 +307,7 @@ if len(csv_files) > 0:
         agent = create_pandas_dataframe_agent(OpenAI(temperature=0), df, verbose=True)
 else:
     st.write("No CSV files uploaded.")
+
 
 st.session_state['generated'] = []
 st.session_state['past'] = []
