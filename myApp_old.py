@@ -192,26 +192,17 @@ def get_loader(file_path_or_url):
         else:
             raise ValueError(f"Unsupported file type: {mime_type}")
 
-def train_or_load_model(train, faiss_obj_path, file_path, idx_name):
+def train_or_load_model(train, faiss_obj_path, file_paths, idx_name):
     if train:
-        loader = get_loader(file_path)
-        pages = loader.load_and_split()
-
-        # if os.path.exists(faiss_obj_path):
-        #     faiss_index = FAISS.load(faiss_obj_path)
-        #     new_embeddings = faiss_index.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
-        #     new_embeddings.save(faiss_obj_path)
-        # else:
-        #     # faiss_index = FAISS.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
-        #     faiss_index = FAISS.from_documents(pages, embeddings)
+        pages = []
+        for file_path in file_paths:
+            loader = get_loader(file_path)
+            pages.extend(loader.load_and_split())
         faiss_index = FAISS.from_documents(pages, embeddings)
-
         faiss_index.save(faiss_obj_path)
-
         return FAISS.load(faiss_obj_path)
     else:
         return FAISS.load(faiss_obj_path)
-
 
 def answer_questions(faiss_index, user_input):
     messages = [
