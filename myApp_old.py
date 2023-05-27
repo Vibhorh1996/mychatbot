@@ -261,7 +261,7 @@ if uploaded_files is not None:
         uploaded_path = save_uploadedfile(uploaded_file)
         uploaded_paths.append(uploaded_path)
 
-    if uploaded_file.type == "application/pdf":
+    if uploaded_files.type == "application/pdf":
         embeddings = OpenAIEmbeddings(openai_api_key=key)
         chat = ChatOpenAI(temperature=0, openai_api_key=key)
         # train = int(input("Do you want to train the model? (1 for yes, 0 for no): "))
