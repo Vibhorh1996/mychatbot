@@ -256,7 +256,7 @@ if uploaded_files is not None:
             st.write(f"Ignoring incompatible file: {uploaded_file.name}")
 
 if len(pdf_files) > 0:
-    file_paths = [file.name for file in pdf_files]
+    file_paths = [st.get_temp_file_path(file) for file in pdf_files]
     embeddings = OpenAIEmbeddings(openai_api_key=key)
     chat = ChatOpenAI(temperature=0, openai_api_key=key)
     faiss_obj_path = "models/test.pickle"
