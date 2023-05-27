@@ -255,6 +255,7 @@ def answer_questions(faiss_index, user_input):
 
 pdf_files = []
 csv_files = []
+faiss_index = None  # Initialize faiss_index
 
 uploaded_files = st.file_uploader("Choose files", accept_multiple_files=True)
 
@@ -305,6 +306,10 @@ if len(csv_files) > 0:
         agent = create_pandas_dataframe_agent(OpenAI(temperature=0), df, verbose=True)
 else:
     st.write("No CSV files uploaded.")
+
+# Check if faiss_index is defined before using it in the answer_questions section
+if faiss_index is not None:
+    output = answer_questions(faiss_index, user_input)
 
 st.session_state['generated'] = []
 st.session_state['past'] = []
