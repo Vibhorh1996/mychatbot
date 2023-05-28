@@ -84,7 +84,6 @@ class FAISS(BaseFAISS):
         return results
 
    def get_query_embedding(self, query):
-    """Get the query embedding using OpenAI."""
     try:
         response = openai.Search.create(
             query=user_input,
