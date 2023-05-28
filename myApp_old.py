@@ -201,22 +201,22 @@ if file: # Check if a file is uploaded
     st.write(f"File type: {file_type}") # Display the file type
     st.write(f"File size: {file_size} bytes") # Display the file size
 
-   if file_type == "application/pdf": # Check if the file type is PDF
-    faiss_index = FAISS() # Create an instance of FAISS class
-    pdf_loader = PDFLoader() # Create an instance of PDFLoader class
-    df = pdf_loader.load(file) # Load the file and get a dataframe
-    documents = pdf_loader.process(df) # Process the dataframe and get a list of documents
-    # Generate embeddings for the documents using OpenAI
-    embeddings = []
-    for document in documents:
-        embedding = faiss_index.get_query_embedding(document)
-        embeddings.append(embedding)
+    if file_type == "application/pdf": # Check if the file type is PDF
+        faiss_index = FAISS() # Create an instance of FAISS class
+        pdf_loader = PDFLoader() # Create an instance of PDFLoader class
+        df = pdf_loader.load(file) # Load the file and get a dataframe
+        documents = pdf_loader.process(df) # Process the dataframe and get a list of documents
+        # Generate embeddings for the documents using OpenAI
+        embeddings = []
+        for document in documents:
+            embedding = faiss_index.get_query_embedding(document)
+            embeddings.append(embedding)
 
-    # Add the embeddings and documents to the FAISS index
-    faiss_index.add(embeddings, documents)
+        # Add the embeddings and documents to the FAISS index
+        faiss_index.add(embeddings, documents)
 
-    # Display a success message
-    st.success("PDF file loaded and indexed successfully")
+        # Display a success message
+        st.success("PDF file loaded and indexed successfully")
 
     elif file_type == "text/csv": # Check if the file type is CSV
         csv_loader = CSVLoader() # Create an instance of CSVLoader class
@@ -229,7 +229,6 @@ if file: # Check if a file is uploaded
 faiss_index = FAISS() # Create an instance of FAISS class
 faiss_index.add(documents) # Add the documents to the FAISS index
 st.success("PDF file loaded and indexed successfully") # Display a success message
-
 
 # Chat interface
 
