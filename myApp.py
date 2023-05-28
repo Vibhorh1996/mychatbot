@@ -158,9 +158,12 @@ if clear_button:
 #     st.write(f"last_token_usage={last_token_usage}")
 
 def save_uploadedfile(uploadedfile):
-     with open(os.path.join("data/dataset",uploadedfile.name),"wb") as f:
-         f.write(uploadedfile.getbuffer())
-     return "data/dataset/"+uploadedfile.name
+    file_paths = []
+    for file in uploadedfile:
+        with open(os.path.join("data/dataset", file.name), "wb") as f:
+            f.write(file.getbuffer())
+        file_paths.append("data/dataset/" + file.name)
+    return file_paths
 
 
 def generate_response(index,prompt):
@@ -247,9 +250,9 @@ def answer_questions(faiss_indices, user_input):
 
 df=None
 uploaded_files = st.file_uploader("Choose file(s) (PDF)", accept_multiple_files=True)
+file_details = []
 file_paths = []
 idx_names = []
-file_details = []
 
 if uploaded_files:
     for i, uploaded_file in enumerate(uploaded_files):
