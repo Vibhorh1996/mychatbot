@@ -268,7 +268,7 @@ if uploaded_files:
         else:
             st.write(f"Incompatible file type: {uploaded_file.type}")
 
-faiss_indices = train_or_load_model(1, "models/{}.pickle", file_paths, idx_names)
+faiss_indices = train_or_load_model(1, "models/{}.pickle", file_paths[0], idx_names)
 
 st.session_state['generated'] = []
 st.session_state['past'] = []
