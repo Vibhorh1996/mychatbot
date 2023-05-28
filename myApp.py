@@ -4,6 +4,7 @@ import pandas as pd
 # from llama_index.indices.struct_store import GPTPandasIndex
 # from llama_index import SimpleDirectoryReader, GPTSimpleVectorIndex
 import os
+import faiss
 import json
 import pickle
 from abc import ABC, abstractmethod
@@ -191,28 +192,22 @@ def get_loader(file_path_or_url):
         else:
             raise ValueError(f"Unsupported file type: {mime_type}")
 
-def train_or_load_model(train, faiss_obj_path, file_path, idx_name):
-    if train:
-        loader = get_loader(file_path)
+def train_or_load_model(train, faiss_obj_path, file_paths, idx_names):
+    faiss_indices = []
+
+    for file_path, idx_name in zip(file_paths, idx_names):
+        loader = PyPDFLoader(file_path)
         pages = loader.load_and_split()
 
-        # if os.path.exists(faiss_obj_path):
-        #     faiss_index = FAISS.load(faiss_obj_path)
-        #     new_embeddings = faiss_index.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
-        #     new_embeddings.save(faiss_obj_path)
-        # else:
-        #     # faiss_index = FAISS.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
-        #     faiss_index = FAISS.from_documents(pages, embeddings)
+        embeddings = OpenAIEmbeddings(openai_api_key=key)
         faiss_index = FAISS.from_documents(pages, embeddings)
+        faiss_index.save(faiss_obj_path.format(idx_name))
 
-        faiss_index.save(faiss_obj_path)
+        faiss_indices.append(faiss_index)
 
-        return FAISS.load(faiss_obj_path)
-    else:
-        return FAISS.load(faiss_obj_path)
+    return faiss_indices
 
-
-def answer_questions(faiss_index, user_input):
+def answer_questions(faiss_indices, user_input):
     messages = [
         SystemMessage(
             content='I want you to act as a document that I am having a conversation with. Your name is "AI '
@@ -221,25 +216,24 @@ def answer_questions(faiss_index, user_input):
                     'the info. Never break character.')
     ]
 
-    # while True:
-        # question = input("Ask a question (type 'stop' to end): ")
-        # if question.lower() == "stop":
-        #     break
+    ai_responses = []
 
-    docs = faiss_index.similarity_search(query=user_input, k=2)
+    for faiss_index in faiss_indices:
+        docs = faiss_index.similarity_search(query=user_input, k=2)
 
-    main_content = user_input + "\n\n"
-    for doc in docs:
-        main_content += doc.page_content + "\n\n"
+        main_content = user_input + "\n\n"
+        for doc in docs:
+            main_content += doc.page_content + "\n\n"
 
-    messages.append(HumanMessage(content=main_content))
-    ai_response = chat(messages).content
-    messages.pop()
-    messages.append(HumanMessage(content=user_input))
-    messages.append(AIMessage(content=ai_response))
+        messages.append(HumanMessage(content=main_content))
+        ai_response = chat(messages).content
+        messages.pop()
+        messages.append(HumanMessage(content=user_input))
+        messages.append(AIMessage(content=ai_response))
 
-    return ai_response
+        ai_responses.append(ai_response)
 
+    return ai_responses
 
 # def main():
 #     faiss_obj_path = "/Users/puneetsachdeva/Downloads/langchain-chat-main/models/test.pickle"
@@ -253,21 +247,21 @@ def answer_questions(faiss_index, user_input):
 
 df=None
 uploaded_files = st.file_uploader("Choose file(s) (PDF)", accept_multiple_files=True)
+file_paths = []
+idx_names = []
+
 if uploaded_files:
-    for uploaded_file in uploaded_files:
+    for i, uploaded_file in enumerate(uploaded_files):
         file_details = {"FileName": uploaded_file.name, "FileType": uploaded_file.type}
         uploaded_path = save_uploadedfile(uploaded_file)
 
         if uploaded_file.type == "application/pdf":
-            # Handle the PDF file here
-            embeddings = OpenAIEmbeddings(openai_api_key=key)
-            chat = ChatOpenAI(temperature=0, openai_api_key=key)
-            faiss_obj_path = "models/test.pickle"
-            index_name = "test"
-            faiss_index = train_or_load_model(1, faiss_obj_path, uploaded_path, index_name)
+            file_paths.append(uploaded_path)
+            idx_names.append(f"index_{i}")
         else:
             st.write(f"Incompatible file type: {uploaded_file.type}")
 
+faiss_indices = train_or_load_model(1, "models/{}.pickle", file_paths, idx_names)
 
 st.session_state['generated'] = []
 st.session_state['past'] = []
