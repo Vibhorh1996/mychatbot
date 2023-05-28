@@ -27,6 +27,34 @@ class DocumentLoader(ABC):
         """Process a dataframe and return a list of documents."""
         pass
 
+# Importing the pypdf library
+from pypdf import PdfReader
+
+# Defining the PDFLoader class
+class PDFLoader(DocumentLoader):
+    """A class for loading and processing PDF files."""
+
+    def load(self, file):
+        """Load a file and return a pandas dataframe."""
+        reader = PdfReader(file) # Create a PdfReader object
+        pages = reader.pages # Get the pages of the PDF file
+        data = [] # Store the data
+        for i, page in enumerate(pages): # Iterate over the pages
+            text = page.extract_text() # Extract the text of the page
+            data.append((i+1, text)) # Append the page number and text to the data
+        df = pd.DataFrame(data, columns=["page", "text"]) # Create a dataframe from the data
+        return df # Return the dataframe
+
+    def process(self, df):
+        """Process a dataframe and return a list of documents."""
+        documents = [] # Store the documents
+        for i, row in df.iterrows(): # Iterate over the rows of the dataframe
+            page = row["page"] # Get the page number
+            text = row["text"] # Get the text
+            document = f"Page {page}:\n{text}" # Format the document
+            documents.append(document) # Append the document to the list
+        return documents # Return the list of documents
+
 class FAISS(BaseFAISS):
     """A class for creating and querying a FAISS index."""
 
