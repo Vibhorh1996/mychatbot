@@ -252,25 +252,21 @@ def answer_questions(faiss_index, user_input):
 
 
 df=None
-uploaded_file = st.file_uploader("Choose a file (PDF / CSV)",accept_multiple_files=True)
-if uploaded_file is not None:
-    file_details = {"FileName":uploaded_file.name,"FileType":uploaded_file.type}
-    uploaded_path=save_uploadedfile(uploaded_file)
+uploaded_files = st.file_uploader("Choose file(s) (PDF)", accept_multiple_files=True)
+if uploaded_files:
+    for uploaded_file in uploaded_files:
+        file_details = {"FileName": uploaded_file.name, "FileType": uploaded_file.type}
+        uploaded_path = save_uploadedfile(uploaded_file)
 
-    if uploaded_file.type == "text/csv":
-       df  = pd.read_csv(uploaded_file)
-       st.dataframe(df.head(10))
-       agent = create_pandas_dataframe_agent(OpenAI(temperature=0),df, verbose=True)
-    elif uploaded_file.type == "application/pdf":
-        embeddings = OpenAIEmbeddings(openai_api_key=key)
-        chat = ChatOpenAI(temperature=0, openai_api_key=key)
-        # train = int(input("Do you want to train the model? (1 for yes, 0 for no): "))
-        faiss_obj_path = "models/test.pickle"
-        index_name = "test"
-        faiss_index = train_or_load_model(1, faiss_obj_path, uploaded_path, index_name)
-        # answer_questions(faiss_index)
-    else:
-        st.write("Incompatible file type")
+        if uploaded_file.type == "application/pdf":
+            # Handle the PDF file here
+            embeddings = OpenAIEmbeddings(openai_api_key=key)
+            chat = ChatOpenAI(temperature=0, openai_api_key=key)
+            faiss_obj_path = "models/test.pickle"
+            index_name = "test"
+            faiss_index = train_or_load_model(1, faiss_obj_path, uploaded_path, index_name)
+        else:
+            st.write(f"Incompatible file type: {uploaded_file.type}")
 
 
 st.session_state['generated'] = []
