@@ -249,10 +249,11 @@ df=None
 uploaded_files = st.file_uploader("Choose file(s) (PDF)", accept_multiple_files=True)
 file_paths = []
 idx_names = []
+file_details = []
 
 if uploaded_files:
     for i, uploaded_file in enumerate(uploaded_files):
-        file_details = {"FileName": uploaded_file.name, "FileType": uploaded_file.type}
+        file_details.append({"FileName": uploaded_file.name, "FileType": uploaded_file.type})
         uploaded_path = save_uploadedfile(uploaded_file)
 
         if uploaded_file.type == "application/pdf":
