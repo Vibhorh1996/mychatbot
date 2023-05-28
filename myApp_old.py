@@ -1,186 +1,231 @@
+# Importing libraries
 import streamlit as st
-from streamlit_chat import message
 import pandas as pd
 import os
 import json
 import pickle
-from abc import ABC, abstractmethod
-from typing import List
+import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlsplit
-import tiktoken
-from langchain.llms import OpenAI
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import FAISS as BaseFAISS
-from langchain.chat_models import ChatOpenAI
-from langchain.schema import AIMessage, HumanMessage, SystemMessage
-from langchain.document_loaders import WebBaseLoader
+from abc import ABC, abstractmethod
+from openai import OpenAIError
+import faiss
+from faiss import BaseFAISS
 
-# Helper functions
-def is_valid_pdf(file_path):
-    """
-    Checks if the file at the given path is a valid PDF file.
-    """
-    return file_path.lower().endswith(".pdf")
-
-def extract_links_from_pdf(file_path):
-    """
-    Extracts links from a PDF file using a custom logic.
-    Modify this function if you have a specific requirement for link extraction from PDFs.
-    """
-    # Placeholder implementation
-    return []
-
-def extract_links_from_files(file_paths):
-    """
-    Extracts links from multiple PDF files.
-    """
-    all_links = []
-
-    for file_path in file_paths:
-        if is_valid_pdf(file_path):
-            links = extract_links_from_pdf(file_path)
-            all_links.extend(links)
-
-    return all_links
+# Class definitions
 
 class DocumentLoader(ABC):
+    """An abstract class for loading and processing documents."""
+
     @abstractmethod
-    def load_and_split(self) -> List[str]:
+    def load(self, file):
+        """Load a file and return a pandas dataframe."""
+        pass
+
+    @abstractmethod
+    def process(self, df):
+        """Process a dataframe and return a list of documents."""
         pass
 
 class FAISS(BaseFAISS):
-    def save(self, file_path):
-        with open(file_path, "wb") as f:
-            pickle.dump(self, f)
+    """A class for creating and querying a FAISS index."""
 
-    @staticmethod
-    def load(file_path):
-        with open(file_path, "rb") as f:
-            return pickle.load(f)
+    def __init__(self):
+        """Initialize the FAISS index."""
+        self.index = faiss.IndexFlatL2(768) # L2 norm for cosine similarity
+        self.embeddings = [] # Store the document embeddings
+        self.documents = [] # Store the document texts
+
+    def add(self, embeddings, documents):
+        """Add embeddings and documents to the index."""
+        self.index.add(embeddings) # Add embeddings to the index
+        self.embeddings.extend(embeddings) # Extend the embeddings list
+        self.documents.extend(documents) # Extend the documents list
+
+    def search(self, query, k=5):
+        """Search the index with a query and return the top k results."""
+        query_embedding = self.get_query_embedding(query) # Get the query embedding
+        distances, indices = self.index.search(query_embedding, k) # Search the index
+        results = [] # Store the results
+        for i in range(len(indices[0])):
+            idx = indices[0][i] # Get the index of the result
+            dist = distances[0][i] # Get the distance of the result
+            doc = self.documents[idx] # Get the document text of the result
+            results.append((doc, dist)) # Append the result tuple
+        return results
+
+    def get_query_embedding(self, query):
+        """Get the query embedding using OpenAI."""
+        try:
+            response = openai.Answer.create(
+                question=query,
+                documents=self.documents,
+                model="davinci",
+                return_metadata=True,
+                return_embeddings=True
+            )
+            query_embedding = response["query_embedding"] # Get the query embedding
+            return query_embedding
+        except OpenAIError as e:
+            print(e) # Print the error
+
+# URL handler
 
 class URLHandler:
+    """A class for handling URLs."""
+
     @staticmethod
     def is_valid_url(url):
-        parsed_url = urlsplit(url)
-        return bool(parsed_url.scheme) and bool(parsed_url.netloc)
+        """Check if a URL is valid."""
+        try:
+            response = requests.get(url) # Send a GET request to the URL
+            return response.status_code == 200 # Return True if the status code is 200 (OK)
+        except:
+            return False # Return False otherwise
 
     @staticmethod
     def extract_links(url):
-        # Custom logic for link extraction from URLs
-        pass
+        """Extract links from a website."""
+        links = [] # Store the links
+        response = requests.get(url) # Send a GET request to the URL
+        soup = BeautifulSoup(response.text, "html.parser") # Parse the HTML with BeautifulSoup
+        for link in soup.find_all("a"): # Find all the anchor tags
+            href = link.get("href") # Get the href attribute of the tag
+            if href and href.endswith(".pdf"): # Check if the href is not None and ends with .pdf
+                links.append(href) # Append the link to the list
+        return links
 
-    @staticmethod
-    def extract_links_from_websites(websites):
-        # Custom logic for link extraction from websites
-        pass
+# Setting page configurations
 
-class DataChatApp:
-    def __init__(self):
-        self.model = None
-        self.faiss_index = None
-        self.file_paths = []
-        self.index_name = "data_index"
+st.set_page_config(
+    page_title="Data Chat", # Set the page title
+    page_icon="🗣️", # Set the page icon
+    layout="wide" # Set the layout to wide
+)
 
-    def load_models(self):
-        # Load or train the models and indices
-        self.load_faiss_index()
-        self.load_chat_model()
+st.markdown("# Data Chat") # Set the header
 
-    def load_faiss_index(self):
-        if os.path.exists("models/faiss_index.pickle"):
-            with open("models/faiss_index.pickle", "rb") as f:
-                self.faiss_index = pickle.load(f)
-        else:
-            self.faiss_index = FAISS()
+# API key configuration
 
-    def load_chat_model(self):
-        if os.path.exists("models/chat_model.pickle"):
-            with open("models/chat_model.pickle", "rb") as f:
-                self.model = pickle.load(f)
-        else:
-            self.model = ChatOpenAI()
+st.markdown("## OpenAI API Key") # Set the subheader
 
-    def save_models(self):
-        # Save the models and indices
-        self.save_faiss_index()
-        self.save_chat_model()
+api_key = st.sidebar.text_input("Enter your OpenAI API key", type="password") # Get the API key from the user
 
-    def save_faiss_index(self):
-        with open("models/faiss_index.pickle", "wb") as f:
-            pickle.dump(self.faiss_index, f)
+if api_key: # Check if the API key is not empty
+    os.environ["OPENAI_API_KEY"] = api_key # Set the API key as an environment variable
+    import openai # Import the OpenAI library
+    st.success("API key set successfully") # Display a success message
+else:
+    st.error("Please enter a valid API key") # Display an error message
 
-    def save_chat_model(self):
-        with open("models/chat_model.pickle", "wb") as f:
-            pickle.dump(self.model, f)
+# Session state variables
 
-    def add_documents(self, documents):
-        # Add documents to the index
-        self.faiss_index.add_documents(documents)
+if "history" not in st.session_state: # Check if the history variable is not in the session state
+    st.session_state.history = [] # Initialize the history variable as an empty list
 
-    def answer_questions(self, questions):
-        # Answer questions using the chat model
-        responses = []
-        for question in questions:
-            response = self.model.generate_response(question)
-            responses.append(response)
-        return responses
+if "model" not in st.session_state: # Check if the model variable is not in the session state
+    st.session_state.model = "gpt-3.5" # Initialize the model variable as gpt-3.5
 
-    def run(self):
-        self.load_models()
+if "cost" not in st.session_state: # Check if the cost variable is not in the session state
+    st.session_state.cost = 0.0 # Initialize the cost variable as 0.0
 
-        st.set_page_config(page_title="Data Chat App", page_icon=":chart_with_upwards_trend:")
+if "tokens" not in st.session_state: # Check if the tokens variable is not in the session state
+    st.session_state.tokens = 0 # Initialize the tokens variable as 0
 
-        st.title("Data Chat App")
-        st.markdown("Welcome to the Data Chat App. Upload your PDF files to get started!")
+# Sidebar
 
-        uploaded_files = st.file_uploader("Upload PDF Files", accept_multiple_files=True, type="pdf")
+st.sidebar.markdown("## Model Selection") # Set the subheader
 
-        if uploaded_files:
-            file_paths = []
-            for file in uploaded_files:
-                file_path = os.path.join("uploads", file.name)
-                with open(file_path, "wb") as f:
-                    f.write(file.getbuffer())
-                file_paths.append(file_path)
+model = st.sidebar.selectbox( # Create a selectbox for choosing the model
+    "Choose a model",
+    ("gpt-3.5", "gpt-4")
+)
 
-            self.file_paths = file_paths
+st.sidebar.markdown("## Conversation Cost") # Set the subheader
 
-            st.success(f"Successfully uploaded {len(file_paths)} PDF files.")
+st.sidebar.write(f"Total cost: ${st.session_state.cost:.2f}") # Display the total cost
+st.sidebar.write(f"Total tokens: {st.session_state.tokens}") # Display the total tokens
 
-            # Extract links from PDF files
-            links = extract_links_from_files(file_paths)
+st.sidebar.markdown("## Clear History") # Set the subheader
 
-            # Handle URLs and extract links from websites
-            url_links = [link for link in links if URLHandler.is_valid_url(link)]
-            website_links = [link for link in links if not URLHandler.is_valid_url(link)]
+clear = st.sidebar.button("Clear") # Create a button for clearing the history
 
-            URLHandler.extract_links_from_websites(website_links)
+if clear: # Check if the button is clicked
+    st.session_state.history = [] # Reset the history variable to an empty list
+    st.session_state.cost = 0.0 # Reset the cost variable to 0.0
+    st.session_state.tokens = 0 # Reset the tokens variable to 0
+    st.experimental_rerun() # Rerun the app
 
-            # Add links to the index
-            self.add_documents(links)
+# File uploader
 
-            st.markdown("### Ask your questions:")
-            with st.form(key="question_form"):
-                question_input = st.text_input("Enter your question")
-                submit_button = st.form_submit_button("Ask")
+st.markdown("## File Uploader") # Set the subheader
 
-            if submit_button:
-                if question_input:
-                    question = question_input.strip()
-                    st.info(f"You: {question}")
+file = st.file_uploader( # Create a file uploader widget
+    "Upload a file",
+    type=["pdf", "csv"]
+)
 
-                    # Answer the question
-                    response = self.answer_questions([question])[0]
+if file: # Check if a file is uploaded
+    file_name = file.name # Get the file name
+    file_type = file.type # Get the file type
+    file_size = file.size # Get the file size
+    st.write(f"File name: {file_name}") # Display the file name
+    st.write(f"File type: {file_type}") # Display the file type
+    st.write(f"File size: {file_size} bytes") # Display the file size
 
-                    # Display the response
-                    st.success(f"Chatbot: {response}")
-                else:
-                    st.warning("Please enter a question.")
+    if file_type == "application/pdf": # Check if the file type is PDF
+        pdf_loader = PDFLoader() # Create an instance of PDFLoader class
+        df = pdf_loader.load(file) # Load the file and get a dataframe
+        documents = pdf_loader.process(df) # Process the dataframe and get a list of documents
+        faiss_index = FAISS() # Create an instance of FAISS class
+        faiss_index.add(documents) # Add the documents to the FAISS index
+        st.success("PDF file loaded and indexed successfully") # Display a success message
 
-        self.save_models()
+    elif file_type == "text/csv": # Check if the file type is CSV
+        csv_loader = CSVLoader() # Create an instance of CSVLoader class
+        df = csv_loader.load(file) # Load the file and get a dataframe
+        documents = csv_loader.process(df) # Process the dataframe and get a list of documents
+        faiss_index = FAISS() # Create an instance of FAISS class
+        faiss_index.add(documents) # Add the documents to the FAISS index
+        st.success("CSV file loaded and indexed successfully") # Display a success message
 
-if __name__ == "__main__":
-    app = DataChatApp()
-    app.run()
+# Chat interface
 
+st.markdown("## Chat Interface") # Set the subheader
+
+container = st.container() # Create a container for the chat interface
+
+user_input = st.text_area("Enter your message") # Create a text area for user input
+
+submit = st.button("Submit") # Create a button for submitting user input
+
+if submit: # Check if the button is clicked
+    if user_input: # Check if the user input is not empty
+        st.session_state.history.append(("User", user_input))        # Generate a response using the selected model
+        try:
+            response = openai.Answer.create(
+                question=user_input,
+                documents=faiss_index.documents,
+                model=model,
+                return_metadata=True
+            )
+            answer = response["answer"] # Get the answer
+            tokens = response["metadata"]["tokens"] # Get the number of tokens
+            cost = tokens * 0.00006 # Calculate the cost
+            st.session_state.history.append((model, answer)) # Append the model and answer to the history
+            st.session_state.tokens += tokens # Update the tokens
+            st.session_state.cost += cost # Update the cost
+        except OpenAIError as e:
+            print(e) # Print the error
+
+    else:
+        st.error("Please enter a valid message") # Display an error message
+
+# Display the conversation history and cost
+for speaker, message in st.session_state.history: # Iterate over the history
+    if speaker == "User": # Check if the speaker is User
+        container.write(f"> {message}") # Display the user message with a > prefix
+    else: # Otherwise
+        container.write(f"{speaker}: {message} ({tokens} tokens, ${cost:.2f})") # Display the model name, answer, tokens, and cost
+
+container.write(f"Total cost: ${st.session_state.cost:.2f}") # Display the total cost
+container.write(f"Total tokens: {st.session_state.tokens}") # Display the total tokens
