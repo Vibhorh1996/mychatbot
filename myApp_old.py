@@ -226,9 +226,9 @@ if file: # Check if a file is uploaded
         faiss_index.add(documents) # Add the documents to the FAISS index
         st.success("CSV file loaded and indexed successfully") # Display a success message
 
-faiss_index = FAISS() # Create an instance of FAISS class
-faiss_index.add(documents) # Add the documents to the FAISS index
-st.success("PDF file loaded and indexed successfully") # Display a success message
+# faiss_index = FAISS() # Create an instance of FAISS class
+# faiss_index.add(documents) # Add the documents to the FAISS index
+# st.success("PDF file loaded and indexed successfully") # Display a success message
 
 # Chat interface
 
