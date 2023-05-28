@@ -83,9 +83,9 @@ class FAISS(BaseFAISS):
             results.append((doc, dist)) # Append the result tuple
         return results
 
-   def get_query_embedding(self, query):
-    try:
-        response = openai.Search.create(
+    def get_query_embedding(self, query):
+        try:
+            response = openai.Search.create(
             query=user_input,
             documents=faiss_index.documents,
             model=model,
@@ -97,8 +97,8 @@ class FAISS(BaseFAISS):
         cost = tokens * 0.00006  # Calculate the cost
         query_embedding = response["query_embedding"]  # Get the query embedding
         return query_embedding  # Return the query embedding
-    except OpenAIError as e:
-        print(e)  # Print the error
+        except OpenAIError as e:
+            print(e)  # Print the error
 
 # URL handler
 
