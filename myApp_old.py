@@ -82,7 +82,16 @@ class FAISS(BaseFAISS):
             doc = self.documents[idx] # Get the document text of the result
             results.append((doc, dist)) # Append the result tuple
         return results
+    
+    user_input = None # Define user_input as a global variable
 
+    def ask_user():
+        global user_input # Use the global keyword
+        user_input = input("Make a selection: ") # Assign a value to user_input
+        print("you entered", user_input)
+        return user_input
+
+    
     def get_query_embedding(self, query):
         try:
             response = openai.Completion.create(
