@@ -162,10 +162,12 @@ def save_uploadedfile(uploaded_files):
     for uploaded_file in uploaded_files:
         file_name = uploaded_file.name if hasattr(uploaded_file, 'name') else f"file_{len(file_paths)}"
         with open(os.path.join("data/dataset", file_name), "wb") as f:
-            f.write(uploaded_file.getbuffer())
+            if isinstance(uploaded_file, bytes):
+                f.write(uploaded_file)
+            else:
+                f.write(uploaded_file.getbuffer())
         file_paths.append("data/dataset/" + file_name)
     return file_paths
-
 
 def generate_response(index,prompt):
     st.session_state['messages'].append({"role":"user","content":prompt})
