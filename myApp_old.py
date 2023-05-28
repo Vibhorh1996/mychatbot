@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 from abc import ABC, abstractmethod
 from openai import OpenAIError
 import faiss
-from faiss import BaseFAISS
+from langchain.vectorstores import FAISS as BaseFAISS
 
 # Class definitions
 
