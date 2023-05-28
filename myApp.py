@@ -19,7 +19,6 @@ from langchain.llms import OpenAI
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import FAISS as BaseFAISS
 from langchain.chat_models import ChatOpenAI
-from langchain.chat_models import chat
 from langchain.schema import AIMessage, HumanMessage, SystemMessage
 from langchain.document_loaders import (
     PyPDFLoader,
