@@ -157,12 +157,12 @@ if clear_button:
 #     last_token_usage = index.llm_predictor.last_token_usage
 #     st.write(f"last_token_usage={last_token_usage}")
 
-def save_uploadedfile(uploadedfile):
+def save_uploadedfile(uploaded_files):
     file_paths = []
-    for file in uploadedfile:
-        file_name = file.name if hasattr(file, 'name') else f"file_{len(file_paths)}"
+    for uploaded_file in uploaded_files:
+        file_name = uploaded_file.name if hasattr(uploaded_file, 'name') else f"file_{len(file_paths)}"
         with open(os.path.join("data/dataset", file_name), "wb") as f:
-            f.write(file.read())
+            f.write(uploaded_file.read())
         file_paths.append("data/dataset/" + file_name)
     return file_paths
 
