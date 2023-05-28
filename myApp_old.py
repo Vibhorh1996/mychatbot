@@ -92,7 +92,7 @@ class FAISS(BaseFAISS):
         return user_input
 
     
-    def get_query_embedding(self, query):
+    def get_query_embedding(self, query, user_input):
         try:
             response = openai.Completion.create(
             prompt=f"Question: {user_input}\n\nDocuments:\n{faiss_index.documents}\n\nAnswer:",
@@ -219,7 +219,7 @@ if file: # Check if a file is uploaded
         # Generate embeddings for the documents using OpenAI
         embeddings = []
         for document in documents:
-            embedding = faiss_index.get_query_embedding(document)
+            embedding = faiss_index.get_query_embedding(document, user_input)
             embeddings.append(embedding)
 
         # Add the embeddings and documents to the FAISS index
@@ -254,7 +254,7 @@ if submit: # Check if the button is clicked
     if user_input: # Check if the user input is not empty
         st.session_state.history.append(("User", user_input))        # Generate a response using the selected model
         try:
-            response = openai.Answer.create(
+            response = openai.Completion.create(
                 question=user_input,
                 documents=faiss_index.documents,
                 model=model,
