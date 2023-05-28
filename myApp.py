@@ -6,15 +6,11 @@ import pandas as pd
 import os
 import json
 import pickle
-import imghdr
-import tempfile
 from abc import ABC, abstractmethod
 from typing import List
 from langchain.agents import create_pandas_dataframe_agent
 import requests
 import mimetypes
-from sentence_transformers import SentenceTransformer
-import textract
 from bs4 import BeautifulSoup
 import tiktoken
 from urllib.parse import urljoin, urlsplit
@@ -160,15 +156,10 @@ if clear_button:
 #     last_token_usage = index.llm_predictor.last_token_usage
 #     st.write(f"last_token_usage={last_token_usage}")
 
-def save_uploadedfiles(uploadedfiles):
-    file_paths = []
-    for uploadedfile in uploadedfiles:
-        if uploadedfile.content_type == 'application/pdf':
-            file_path = os.path.join("uploads", uploadedfile.name)
-            with open(file_path, "wb") as f:
-                f.write(uploadedfile.getbuffer())
-            file_paths.append(file_path)
-    return file_paths
+def save_uploadedfile(uploadedfile):
+     with open(os.path.join("data/dataset",uploadedfile.name),"wb") as f:
+         f.write(uploadedfile.getbuffer())
+     return "data/dataset/"+uploadedfile.name
 
 
 def generate_response(index,prompt):
@@ -183,45 +174,43 @@ def generate_response(index,prompt):
 
     return response,  last_token_usage
 
-def get_loaders(file_paths):
-    loaders = []
-    for file_path in file_paths:
-        mime_type, _ = mimetypes.guess_type(file_path)
+def get_loader(file_path_or_url):
+    if file_path_or_url.startswith("http://") or file_path_or_url.startswith("https://"):
+        handle_website = URLHandler()
+        return WebBaseLoader(handle_website.extract_links_from_websites([file_path_or_url]))
+    else:
+        mime_type, _ = mimetypes.guess_type(file_path_or_url)
 
         if mime_type == 'application/pdf':
-            loaders.append(PyPDFLoader(file_path))
+            return PyPDFLoader(file_path_or_url)
         elif mime_type == 'text/csv':
-            loaders.append(CSVLoader(file_path))
-        elif mime_type in ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']:
-            loaders.append(UnstructuredWordDocumentLoader(file_path))
+            return CSVLoader(file_path_or_url)
+        elif mime_type in ['application/msword',
+                           'application/vnd.openxmlformats-officedocument.wordprocessingml.document']:
+            return UnstructuredWordDocumentLoader(file_path_or_url)
         else:
             raise ValueError(f"Unsupported file type: {mime_type}")
-    return loaders
 
-def generate_embedding(file_path):
-    # Extract text from PDF using textract
-    text = textract.process(file_path).decode('utf-8')
-    
-    # Generate embeddings using a pre-trained SentenceTransformer model
-    model = SentenceTransformer('distilbert-base-nli-mean-tokens')
-    embeddings = model.encode([text])
-    
-    return embeddings[0]
-
-def train_or_load_model(train, faiss_obj_path, file_paths, idx_name):
+def train_or_load_model(train, faiss_obj_path, file_path, idx_name):
     if train:
-        loaders = get_loaders(file_paths)
-        pages = []
-        for loader in loaders:
-            pages.extend(loader.load_and_split())
+        loader = get_loader(file_path)
+        pages = loader.load_and_split()
 
+        # if os.path.exists(faiss_obj_path):
+        #     faiss_index = FAISS.load(faiss_obj_path)
+        #     new_embeddings = faiss_index.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
+        #     new_embeddings.save(faiss_obj_path)
+        # else:
+        #     # faiss_index = FAISS.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
+        #     faiss_index = FAISS.from_documents(pages, embeddings)
         faiss_index = FAISS.from_documents(pages, embeddings)
 
         faiss_index.save(faiss_obj_path)
 
-        return faiss_index  # Return the faiss_index object
+        return FAISS.load(faiss_obj_path)
     else:
         return FAISS.load(faiss_obj_path)
+
 
 def answer_questions(faiss_index, user_input):
     messages = [
@@ -232,6 +221,11 @@ def answer_questions(faiss_index, user_input):
                     'the info. Never break character.')
     ]
 
+    # while True:
+        # question = input("Ask a question (type 'stop' to end): ")
+        # if question.lower() == "stop":
+        #     break
+
     docs = faiss_index.similarity_search(query=user_input, k=2)
 
     main_content = user_input + "\n\n"
@@ -240,8 +234,12 @@ def answer_questions(faiss_index, user_input):
 
     messages.append(HumanMessage(content=main_content))
     ai_response = chat(messages).content
+    messages.pop()
+    messages.append(HumanMessage(content=user_input))
+    messages.append(AIMessage(content=ai_response))
 
     return ai_response
+
 
 # def main():
 #     faiss_obj_path = "/Users/puneetsachdeva/Downloads/langchain-chat-main/models/test.pickle"
@@ -252,61 +250,27 @@ def answer_questions(faiss_index, user_input):
 #     faiss_index = train_or_load_model(train, faiss_obj_path, file_path, index_name)
 #     answer_questions(faiss_index)
 
-pdf_files = []
-csv_files = []
 
-uploaded_files = st.file_uploader("Choose files", accept_multiple_files=True)
+df=None
+uploaded_file = st.file_uploader("Choose a file (PDF / CSV)",accept_multiple_files=True)
+if uploaded_file is not None:
+    file_details = {"FileName":uploaded_file.name,"FileType":uploaded_file.type}
+    uploaded_path=save_uploadedfile(uploaded_file)
 
-if uploaded_files is not None:
-    for uploaded_file in uploaded_files:
-        file_extension = uploaded_file.name.split(".")[-1]
-        
-        if file_extension.lower() == "pdf":
-            pdf_files.append(uploaded_file)
-        elif file_extension.lower() == "csv":
-            csv_files.append(uploaded_file)
-        else:
-            st.write(f"Ignoring incompatible file: {uploaded_file.name}")
-
-if len(pdf_files) > 0:
-    file_paths = []
-    for file in pdf_files:
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            temp_file.write(file.read())
-            file_paths.append(temp_file.name)
-
-            # Detect MIME type using imghdr module
-            temp_file.seek(0)
-            mime_type = imghdr.what(temp_file.name)
-            if mime_type != "pdf":
-                st.write(f"Ignoring unsupported file: {file.name}")
-                file_paths.remove(temp_file.name)
-
-    if len(file_paths) > 0:
-        embeddings = []
-        for file_path in file_paths:
-            # Generate embeddings for each PDF file
-            embedding = generate_embedding(file_path)  # Replace with your actual embedding generation code
-            embeddings.append(embedding)
-
+    if uploaded_file.type == "text/csv":
+       df  = pd.read_csv(uploaded_file)
+       st.dataframe(df.head(10))
+       agent = create_pandas_dataframe_agent(OpenAI(temperature=0),df, verbose=True)
+    elif uploaded_file.type == "application/pdf":
         embeddings = OpenAIEmbeddings(openai_api_key=key)
         chat = ChatOpenAI(temperature=0, openai_api_key=key)
+        # train = int(input("Do you want to train the model? (1 for yes, 0 for no): "))
         faiss_obj_path = "models/test.pickle"
         index_name = "test"
-        faiss_index = train_or_load_model(True, faiss_obj_path, file_paths, index_name)
-
-        if faiss_index is not None:
-            output = answer_questions(faiss_index, user_input)
-else:
-    st.write("No PDF files uploaded.")
-
-if len(csv_files) > 0:
-    for uploaded_file in csv_files:
-        df = pd.read_csv(uploaded_file)
-        st.dataframe(df.head(10))
-        agent = create_pandas_dataframe_agent(OpenAI(temperature=0), df, verbose=True)
-else:
-    st.write("No CSV files uploaded.")
+        faiss_index = train_or_load_model(1, faiss_obj_path, uploaded_path, index_name)
+        # answer_questions(faiss_index)
+    else:
+        st.write("Incompatible file type")
 
 
 st.session_state['generated'] = []
@@ -334,19 +298,19 @@ with container:
         submit_button = st.form_submit_button(label='Send')
 
     if submit_button and user_input:
-        if uploaded_files is not None:
-            for uploaded_file in uploaded_files:
-                if uploaded_file.type == "text/csv":
-                    output = agent.run(user_input)
-                elif uploaded_file.type == "application/pdf":
-                    output = answer_questions(faiss_index, user_input)
-                total_tokens = 0
-                st.session_state['past'].append(user_input)
-                st.session_state['generated'].append(output)
-                st.session_state['model_name'].append(model_name)
-                st.session_state['total_tokens'].append(total_tokens)
-        else:
-            st.write("No files uploaded.")
+        # output, last_token_count = generate_response(index,user_input)
+        if uploaded_file.type == "text/csv":
+            output = agent.run(user_input)
+        elif uploaded_file.type == "application/pdf":
+            output = answer_questions(faiss_index, user_input)    
+        #st.write(output)
+        #total_tokens = last_token_count
+        total_tokens = 0
+        st.session_state['past'].append(user_input)
+        # st.session_state['generated'].append(output.response)
+        st.session_state['generated'].append(output)
+        st.session_state['model_name'].append(model_name)
+        st.session_state['total_tokens'].append(total_tokens)
 
         # from https://openai.com/pricing#language-models
         if model_name == "GPT-3.5":
