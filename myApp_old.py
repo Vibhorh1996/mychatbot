@@ -85,16 +85,14 @@ class FAISS(BaseFAISS):
 
     def get_query_embedding(self, query):
         try:
-            response = openai.Search.create(
-            query=user_input,
-            documents=faiss_index.documents,
+            response = openai.Completion.create(
+            prompt=f"Question: {user_input}\n\nDocuments:\n{faiss_index.documents}\n\nAnswer:",
             model=model,
-            return_metadata=True,
-            return_embeddings=True  # Add this parameter to return the query embedding
+            return_metadata=True
         )
-            answer = response["data"][0]["text"]  # Get the answer
-            tokens = response["metadata"]["tokens"]  # Get the number of tokens
-            cost = tokens * 0.00006  # Calculate the cost
+            answer = response["choices"][0]["text"] # Get the answer
+            tokens = response["metadata"]["tokens"] # Get the number of tokens
+            cost = tokens * 0.00006 # Calculate the cost
             query_embedding = response["query_embedding"]  # Get the query embedding
             return query_embedding  # Return the query embedding
         except OpenAIError as e:
