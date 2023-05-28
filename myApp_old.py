@@ -10,7 +10,6 @@ import pypdf
 from bs4 import BeautifulSoup
 from abc import ABC, abstractmethod
 from openai import OpenAIError
-from openai import Answer
 import faiss
 from langchain.vectorstores import FAISS as BaseFAISS
 
@@ -84,20 +83,23 @@ class FAISS(BaseFAISS):
             results.append((doc, dist)) # Append the result tuple
         return results
 
-    def get_query_embedding(self, query):
-        """Get the query embedding using OpenAI."""
-        try:
-            response = openai.Answer.create(
-                question=query,
-                documents=self.documents,
-                model="davinci",
-                return_metadata=True,
-                return_embeddings=True
-            )
-            query_embedding = response["query_embedding"] # Get the query embedding
-            return query_embedding
-        except OpenAIError as e:
-            print(e) # Print the error
+   def get_query_embedding(self, query):
+    """Get the query embedding using OpenAI."""
+    try:
+        response = openai.Search.create(
+            query=user_input,
+            documents=faiss_index.documents,
+            model=model,
+            return_metadata=True,
+            return_embeddings=True # Add this parameter to return the query embedding
+        )
+        answer = response["data"][0]["text"] # Get the answer
+        tokens = response["metadata"]["tokens"] # Get the number of tokens
+        cost = tokens * 0.00006 # Calculate the cost
+        query_embedding = response["query_embedding"] # Get the query embedding
+        return query_embedding # Return the query embedding
+    except OpenAIError as e:
+        print(e) # Print the error
 
 # URL handler
 
