@@ -252,7 +252,7 @@ def answer_questions(faiss_index, user_input):
 
 
 df=None
-uploaded_file = st.file_uploader("Choose a file (PDF / CSV)",accept_multiple_files=False)
+uploaded_file = st.file_uploader("Choose a file (PDF / CSV)",accept_multiple_files=True)
 if uploaded_file is not None:
     file_details = {"FileName":uploaded_file.name,"FileType":uploaded_file.type}
     uploaded_path=save_uploadedfile(uploaded_file)
