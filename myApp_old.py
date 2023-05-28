@@ -1,46 +1,53 @@
 import streamlit as st
 from streamlit_chat import message
 import pandas as pd
-# from llama_index.indices.struct_store import GPTPandasIndex
-# from llama_index import SimpleDirectoryReader, GPTSimpleVectorIndex
 import os
 import json
 import pickle
-import tempfile
 from abc import ABC, abstractmethod
 from typing import List
-from langchain.agents import create_pandas_dataframe_agent
-import requests
-import mimetypes
 from bs4 import BeautifulSoup
-import tiktoken
 from urllib.parse import urljoin, urlsplit
+import tiktoken
 from langchain.llms import OpenAI
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import FAISS as BaseFAISS
 from langchain.chat_models import ChatOpenAI
 from langchain.schema import AIMessage, HumanMessage, SystemMessage
-from langchain.document_loaders import (
-    PyPDFLoader,
-    CSVLoader,
-    UnstructuredWordDocumentLoader,
-    WebBaseLoader,
-)
+from langchain.document_loaders import WebBaseLoader
 
+# Helper functions
+def is_valid_pdf(file_path):
+    """
+    Checks if the file at the given path is a valid PDF file.
+    """
+    return file_path.lower().endswith(".pdf")
 
+def extract_links_from_pdf(file_path):
+    """
+    Extracts links from a PDF file using a custom logic.
+    Modify this function if you have a specific requirement for link extraction from PDFs.
+    """
+    # Placeholder implementation
+    return []
 
-def count_tokens(text, model="gpt-3.5-turbo"):
-    encoding = tiktoken.get_encoding("cl100k_base")
-    encoding = tiktoken.encoding_for_model(model)
-    tokens = len(encoding.encode(text))
-    return tokens
+def extract_links_from_files(file_paths):
+    """
+    Extracts links from multiple PDF files.
+    """
+    all_links = []
 
+    for file_path in file_paths:
+        if is_valid_pdf(file_path):
+            links = extract_links_from_pdf(file_path)
+            all_links.extend(links)
+
+    return all_links
 
 class DocumentLoader(ABC):
     @abstractmethod
     def load_and_split(self) -> List[str]:
         pass
-
 
 class FAISS(BaseFAISS):
     def save(self, file_path):
@@ -52,7 +59,6 @@ class FAISS(BaseFAISS):
         with open(file_path, "rb") as f:
             return pickle.load(f)
 
-
 class URLHandler:
     @staticmethod
     def is_valid_url(url):
@@ -61,261 +67,120 @@ class URLHandler:
 
     @staticmethod
     def extract_links(url):
-        response = requests.get(url)
-        soup = BeautifulSoup(response.text, 'html.parser')
-
-        links = []
-        for link in soup.find_all('a'):
-            href = link.get('href')
-            if href:
-                absolute_url = urljoin(url, href)
-                if URLHandler.is_valid_url(absolute_url) and (
-                        absolute_url.startswith("http://") or absolute_url.startswith("https://")):
-                    links.append(absolute_url)
-
-        return links
+        # Custom logic for link extraction from URLs
+        pass
 
     @staticmethod
     def extract_links_from_websites(websites):
-        all_links = []
+        # Custom logic for link extraction from websites
+        pass
 
-        for website in websites:
-            links = URLHandler.extract_links(website)
-            all_links.extend(links)
+class DataChatApp:
+    def __init__(self):
+        self.model = None
+        self.faiss_index = None
+        self.file_paths = []
+        self.index_name = "data_index"
 
-        return all_links
+    def load_models(self):
+        # Load or train the models and indices
+        self.load_faiss_index()
+        self.load_chat_model()
 
-
-# setting page title and header
-st.set_page_config(page_title="Data Chat", page_icon=':robot_face:')
-st.markdown("<h1 stype='text-align:center;'>Data Chat</h1>", unsafe_allow_html=True)
-st.markdown("<h2 stype='text-align:center;'>A Chatbot for conversing with your data</h2>", unsafe_allow_html=True)
-
-# set API Key
-key = st.text_input('OpenAI API Key','',type='password')
-os.environ['OPENAPI_API_KEY'] = key
-os.environ['OPENAI_API_KEY'] = key
-
-
-# initialize session state variables
-if 'generated' not in st.session_state:
-    st.session_state['generated']=[]
-
-if 'past' not in st.session_state:
-    st.session_state['past']=[]
-
-if 'messages' not in st.session_state:
-    st.session_state['messages']=[
-        {"role":"DataChat","content":"You are a helpful bot."}
-    ]
-
-if 'model_name' not in st.session_state:
-    st.session_state['model_name']=[]
-
-if 'cost' not in st.session_state:
-    st.session_state['cost']=[]
-
-if 'total_tokens' not in st.session_state:
-    st.session_state['total_tokens']=[]
-
-if 'total_cost' not in st.session_state:
-    st.session_state['total_cost']=0.0
-
-# sidebar - let user choose model, show total cost of current conversation, and let user clear the current conversation
-st.sidebar.title("Sidebar")
-model_name = st.sidebar.radio("Choose a model:",("GPT-3.5", "GPT-4"))
-counter_placeholder = st.sidebar.empty()
-counter_placeholder.write(f"Total cost of this conversation: ${st.session_state['total_cost']:.5f}")
-clear_button = st.sidebar.button("Clear Conversation", key="clear")
-
-# map model names to OpenAI model IDs
-if model_name == "GPT-3.5":
-    model = "gpt-3.5-turbo"
-else:
-    model = "gpt-4"
-
-# reset everything
-if clear_button:
-    st.session_state['generated'] = []
-    st.session_state['past'] = []
-    st.session_state['messages'] = [
-        {"role": "system", "content": "You are a helpful assistant."}
-    ]
-    st.session_state['number_tokens'] = []
-    st.session_state['model_name'] = []
-    st.session_state['cost'] = []
-    st.session_state['total_cost'] = 0.0
-    st.session_state['total_tokens'] = []
-    counter_placeholder.write(f"Total cost of this conversation: ${st.session_state['total_cost']:.5f}")
-        
-# def askQuestion():
-#     prompt = st.text_input("write your question:")
-#     response = index.query(prompt)
-#     st.write(response)
-
-#     # Get the last token usage
-#     last_token_usage = index.llm_predictor.last_token_usage
-#     st.write(f"last_token_usage={last_token_usage}")
-
-def save_uploadedfile(uploadedfile):
-     with open(os.path.join("data/dataset",uploadedfile.name),"wb") as f:
-         f.write(uploadedfile.getbuffer())
-     return "data/dataset/"+uploadedfile.name
-
-
-def generate_response(index,prompt):
-    st.session_state['messages'].append({"role":"user","content":prompt})
-
-    response = index.query(prompt)
-    st.session_state['messages'].append({"role":"DataChat","content":response})
-
-    #last_token_usage = index.llm_predictor.last_token_usage
-    last_token_usage = 0.0
-    #print(f"last_token_usage={last_token_usage}")
-
-    return response,  last_token_usage
-
-def get_loader(file_path_or_url):
-    if file_path_or_url.startswith("http://") or file_path_or_url.startswith("https://"):
-        handle_website = URLHandler()
-        return WebBaseLoader(handle_website.extract_links_from_websites([file_path_or_url]))
-    else:
-        mime_type, _ = mimetypes.guess_type(file_path_or_url)
-
-        if mime_type == 'application/pdf':
-            return PyPDFLoader(file_path_or_url)
-        elif mime_type == 'text/csv':
-            return CSVLoader(file_path_or_url)
-        elif mime_type in ['application/msword',
-                           'application/vnd.openxmlformats-officedocument.wordprocessingml.document']:
-            return UnstructuredWordDocumentLoader(file_path_or_url)
+    def load_faiss_index(self):
+        if os.path.exists("models/faiss_index.pickle"):
+            with open("models/faiss_index.pickle", "rb") as f:
+                self.faiss_index = pickle.load(f)
         else:
-            raise ValueError(f"Unsupported file type: {mime_type}")
+            self.faiss_index = FAISS()
 
-def train_or_load_model(train, faiss_obj_path, file_paths, idx_name):
-    if train:
-        pages = []
-        for file_path in file_paths:
-            loader = get_loader(file_path)
-            pages.extend(loader.load_and_split())
-        faiss_index = FAISS.from_documents(pages, embeddings)
-        faiss_index.save(faiss_obj_path)
-        return FAISS.load(faiss_obj_path)
-    else:
-        return FAISS.load(faiss_obj_path)
-
-def answer_questions(faiss_index, user_input):
-    messages = [
-        SystemMessage(
-            content='I want you to act as a document that I am having a conversation with. Your name is "AI '
-                    'Assistant". You will provide me with answers from the given info. If the answer is not included, '
-                    'say exactly "Hmm, I am not sure." and stop after that. Refuse to answer any question not about '
-                    'the info. Never break character.')
-    ]
-
-    # while True:
-        # question = input("Ask a question (type 'stop' to end): ")
-        # if question.lower() == "stop":
-        #     break
-
-    docs = faiss_index.similarity_search(query=user_input, k=2)
-
-    main_content = user_input + "\n\n"
-    for doc in docs:
-        main_content += doc.page_content + "\n\n"
-
-    messages.append(HumanMessage(content=main_content))
-    ai_response = chat(messages).content
-    messages.pop()
-    messages.append(HumanMessage(content=user_input))
-    messages.append(AIMessage(content=ai_response))
-
-    return ai_response
-
-
-# def main():
-#     faiss_obj_path = "/Users/puneetsachdeva/Downloads/langchain-chat-main/models/test.pickle"
-#     file_path = "/Users/puneetsachdeva/Downloads/langchain-chat-main/data/mlb_players.csv"
-#     index_name = "test"
-
-#     train = int(input("Do you want to train the model? (1 for yes, 0 for no): "))
-#     faiss_index = train_or_load_model(train, faiss_obj_path, file_path, index_name)
-#     answer_questions(faiss_index)
-
-
-df=None
-uploaded_files = st.file_uploader("Choose one or more PDF files", type="pdf", accept_multiple_files=True)
-if uploaded_files is not None:
-    temp_dir = tempfile.mkdtemp()
-    uploaded_paths = []
-    for uploaded_file in uploaded_files:
-        uploaded_path = save_uploadedfile(uploaded_file)
-        uploaded_paths.append(uploaded_path)
-
-    if len(uploaded_files) > 0 and all([uploaded_file.type == "application/pdf" for uploaded_file in uploaded_files]):
-        embeddings = OpenAIEmbeddings(openai_api_key=key)
-        chat = ChatOpenAI(temperature=0, openai_api_key=key)
-        # train = int(input("Do you want to train the model? (1 for yes, 0 for no): "))
-        faiss_obj_path = "models/test.pickle"
-        index_name = "test"
-        faiss_index = train_or_load_model(1, faiss_obj_path, uploaded_paths, index_name)
-        # answer_questions(faiss_index)
-    else:
-        st.write("Incompatible file type")
-    
-    pages = []
-    for uploaded_path in uploaded_paths:
-        loader = get_loader(uploaded_path)
-        pages.extend(loader.load_and_split())
-
-faiss_obj_path = "models/test.pickle"
-index_name = "test"
-faiss_index = train_or_load_model(1, faiss_obj_path, pages, index_name)
-        
-st.session_state['generated'] = []
-st.session_state['past'] = []
-st.session_state['messages'] = [
-    {"role": "system", "content": "You are a helpful assistant."}
-]
-st.session_state['number_tokens'] = []
-st.session_state['model_name'] = []
-st.session_state['cost'] = []
-st.session_state['total_cost'] = 0.0
-st.session_state['total_tokens'] = []
-
-# container for chat history
-response_container = st.container()
-# container for text box
-container = st.container()
-
-with container:
-    with st.form(key='my_form', clear_on_submit=True):
-        user_input = st.text_area("You:", key='input', height=100)
-        submit_button = st.form_submit_button(label='Send')
-
-    if submit_button and user_input:
-        output = answer_questions(faiss_index, user_input)
-        total_tokens = 0
-        st.session_state['past'].append(user_input)
-        st.session_state['generated'].append(output)
-        st.session_state['model_name'].append(model_name)
-        st.session_state['total_tokens'].append(total_tokens)
-
-        # from https://openai.com/pricing#language-models
-        if model_name == "GPT-3.5":
-            cost = total_tokens * 0.002 / 1000
+    def load_chat_model(self):
+        if os.path.exists("models/chat_model.pickle"):
+            with open("models/chat_model.pickle", "rb") as f:
+                self.model = pickle.load(f)
         else:
-            #cost = (prompt_tokens * 0.03 + completion_tokens * 0.06) / 1000
-            cost = total_tokens * 0.002 / 1000
-        st.session_state['cost'].append(cost)
-        st.session_state['total_cost'] += cost
+            self.model = ChatOpenAI()
 
-if st.session_state['generated']:
-    #st.write(st.session_state['generated'])
-    with response_container:
-        for i in range(len(st.session_state['generated'])):
-            message(st.session_state["past"][i], is_user=True, key=str(i) + '_user')
-            message(st.session_state["generated"][i], key=str(i))
-            st.write(
-                f"Model used: {st.session_state['model_name'][i]}; Number of tokens: {st.session_state['total_tokens'][i]}; Cost: ${st.session_state['cost'][i]:.5f}")
-            counter_placeholder.write(f"Total cost of this conversation: ${st.session_state['total_cost']:.5f}")
+    def save_models(self):
+        # Save the models and indices
+        self.save_faiss_index()
+        self.save_chat_model()
+
+    def save_faiss_index(self):
+        with open("models/faiss_index.pickle", "wb") as f:
+            pickle.dump(self.faiss_index, f)
+
+    def save_chat_model(self):
+        with open("models/chat_model.pickle", "wb") as f:
+            pickle.dump(self.model, f)
+
+    def add_documents(self, documents):
+        # Add documents to the index
+        self.faiss_index.add_documents(documents)
+
+    def answer_questions(self, questions):
+        # Answer questions using the chat model
+        responses = []
+        for question in questions:
+            response = self.model.generate_response(question)
+            responses.append(response)
+        return responses
+
+    def run(self):
+        self.load_models()
+
+        st.set_page_config(page_title="Data Chat App", page_icon=":chart_with_upwards_trend:")
+
+        st.title("Data Chat App")
+        st.markdown("Welcome to the Data Chat App. Upload your PDF files to get started!")
+
+        uploaded_files = st.file_uploader("Upload PDF Files", accept_multiple_files=True, type="pdf")
+
+        if uploaded_files:
+            file_paths = []
+            for file in uploaded_files:
+                file_path = os.path.join("uploads", file.name)
+                with open(file_path, "wb") as f:
+                    f.write(file.getbuffer())
+                file_paths.append(file_path)
+
+            self.file_paths = file_paths
+
+            st.success(f"Successfully uploaded {len(file_paths)} PDF files.")
+
+            # Extract links from PDF files
+            links = extract_links_from_files(file_paths)
+
+            # Handle URLs and extract links from websites
+            url_links = [link for link in links if URLHandler.is_valid_url(link)]
+            website_links = [link for link in links if not URLHandler.is_valid_url(link)]
+
+            URLHandler.extract_links_from_websites(website_links)
+
+            # Add links to the index
+            self.add_documents(links)
+
+            st.markdown("### Ask your questions:")
+            with st.form(key="question_form"):
+                question_input = st.text_input("Enter your question")
+                submit_button = st.form_submit_button("Ask")
+
+            if submit_button:
+                if question_input:
+                    question = question_input.strip()
+                    st.info(f"You: {question}")
+
+                    # Answer the question
+                    response = self.answer_questions([question])[0]
+
+                    # Display the response
+                    st.success(f"Chatbot: {response}")
+                else:
+                    st.warning("Please enter a question.")
+
+        self.save_models()
+
+if __name__ == "__main__":
+    app = DataChatApp()
+    app.run()
+
