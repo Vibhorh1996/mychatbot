@@ -5,6 +5,7 @@ import os
 import json
 import pickle
 import requests
+import pypdf
 from bs4 import BeautifulSoup
 from abc import ABC, abstractmethod
 from openai import OpenAIError
