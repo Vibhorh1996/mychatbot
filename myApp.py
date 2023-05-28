@@ -160,9 +160,10 @@ if clear_button:
 def save_uploadedfile(uploadedfile):
     file_paths = []
     for file in uploadedfile:
-        with open(os.path.join("data/dataset", file.name), "wb") as f:
+        file_name = file.name if hasattr(file, 'name') else f"file_{len(file_paths)}"
+        with open(os.path.join("data/dataset", file_name), "wb") as f:
             f.write(file.getbuffer())
-        file_paths.append("data/dataset/" + file.name)
+        file_paths.append("data/dataset/" + file_name)
     return file_paths
 
 
