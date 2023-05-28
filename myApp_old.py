@@ -92,11 +92,11 @@ class FAISS(BaseFAISS):
             return_metadata=True,
             return_embeddings=True  # Add this parameter to return the query embedding
         )
-        answer = response["data"][0]["text"]  # Get the answer
-        tokens = response["metadata"]["tokens"]  # Get the number of tokens
-        cost = tokens * 0.00006  # Calculate the cost
-        query_embedding = response["query_embedding"]  # Get the query embedding
-        return query_embedding  # Return the query embedding
+            answer = response["data"][0]["text"]  # Get the answer
+            tokens = response["metadata"]["tokens"]  # Get the number of tokens
+            cost = tokens * 0.00006  # Calculate the cost
+            query_embedding = response["query_embedding"]  # Get the query embedding
+            return query_embedding  # Return the query embedding
         except OpenAIError as e:
             print(e)  # Print the error
 
