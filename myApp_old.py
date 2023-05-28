@@ -10,6 +10,7 @@ import pypdf
 from bs4 import BeautifulSoup
 from abc import ABC, abstractmethod
 from openai import OpenAIError
+from openai import Answer
 import faiss
 from langchain.vectorstores import FAISS as BaseFAISS
 
