@@ -175,28 +175,26 @@ def answer_questions(file_paths, user_input):
         loader = get_loader(file_path)
         document = loader.load_and_split()
 
-        # Concatenate the document content as a single string
-        document_content = "\n\n".join([str(doc) for doc in document]) # using list comprehension
+        # Iterate over the paragraphs of the document
+        for paragraph in document:
+            # Generate an AI response for the user's query using the paragraph content
+            messages = [
+                SystemMessage(
+                    content='You are a document named "AI Assistant". Answer from the info or say "Hmm, I am not sure." No other questions.'
+                ),
+                HumanMessage(content=user_input),
+                AIMessage(content=paragraph)
+            ]
 
-        # Generate an AI response for the user's query using the document content
-        messages = [
-            SystemMessage(
-                content='You are a document named "AI Assistant". Answer from the info or say "Hmm, I am not sure." No other questions.'
-            ),
-            HumanMessage(content=user_input),
-            AIMessage(content=document_content)
-        ]
+            ai_response = chat(messages).content
 
-        ai_response = chat(messages).content
-
-        # Update the best score and response if a higher similarity is found
-        similarity_score = calculate_similarity(user_input, ai_response)
-        if similarity_score > best_score:
-            best_score = similarity_score
-            best_response = ai_response
+            # Update the best score and response if a higher similarity is found
+            similarity_score = calculate_similarity(user_input, ai_response)
+            if similarity_score > best_score:
+                best_score = similarity_score
+                best_response = ai_response
 
     return best_response
-
 
 # create an OpenAI object
 openai = OpenAI()
