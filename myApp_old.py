@@ -15,6 +15,7 @@ import mimetypes
 import time
 from bs4 import BeautifulSoup
 import tiktoken
+from scipy.spatial.distance import cosine
 from urllib.parse import urljoin, urlsplit
 from langchain.agents import create_pandas_dataframe_agent
 from langchain.llms import OpenAI
@@ -166,6 +167,17 @@ def train_or_load_model(train, faiss_obj_path, file_path, idx_name):
     else:
         return FAISS.load(faiss_obj_path)
 
+def calculate_similarity(user_input, ai_response):
+    # Convert the user input and the AI response into vectors
+    user_vector = vectorize(user_input)
+    ai_vector = vectorize(ai_response)
+
+    # Calculate the cosine similarity between the vectors
+    similarity = 1 - cosine(user_vector, ai_vector)
+
+    # Return the similarity score
+    return similarity
+    
 def answer_questions(file_paths, user_input):
     best_score = 0.0
     best_response = ""
