@@ -171,10 +171,10 @@ def train_or_load_model(train, faiss_obj_path, file_path, idx_name):
 # Create a TF-IDF vectorizer object
 vectorizer = TfidfVectorizer()
 
-# Fit the vectorizer on the document content
-vectorizer.fit(document_content)
+def vectorize(text, document_content):
+    # Fit the vectorizer on the document content
+    vectorizer.fit(document_content)
 
-def vectorize(text):
     # Transform the text into a TF-IDF vector
     vector = vectorizer.transform([text])
 
