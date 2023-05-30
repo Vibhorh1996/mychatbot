@@ -16,6 +16,7 @@ import time
 from bs4 import BeautifulSoup
 import tiktoken
 from scipy.spatial.distance import cosine
+from sklearn.feature_extraction.text import TfidfVectorizer
 from urllib.parse import urljoin, urlsplit
 from langchain.agents import create_pandas_dataframe_agent
 from langchain.llms import OpenAI
@@ -166,6 +167,19 @@ def train_or_load_model(train, faiss_obj_path, file_path, idx_name):
         return FAISS.load(faiss_obj_path)
     else:
         return FAISS.load(faiss_obj_path)
+
+# Create a TF-IDF vectorizer object
+vectorizer = TfidfVectorizer()
+
+# Fit the vectorizer on the document content
+vectorizer.fit(document_content)
+
+def vectorize(text):
+    # Transform the text into a TF-IDF vector
+    vector = vectorizer.transform([text])
+
+    # Return the vector
+    return vector
 
 def calculate_similarity(user_input, ai_response):
     # Convert the user input and the AI response into vectors
