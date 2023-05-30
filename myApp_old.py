@@ -233,17 +233,20 @@ if submit_button and user_input:
 
 docs = faiss_index.similarity_search(query=user_input, k=2)
 
-# Extract the similarity scores and page content from the Document object
-scores = []
-responses = []
-for doc in docs:
-    scores.append(doc.score)
-    responses.append(doc.page_content)
+ # iterate over the faiss_index objects and perform a similarity search with the user input for each one
+    scores = []
+    responses = []
+    for faiss_index in faiss_indices:
+        docs = faiss_index.similarity_search(query=user_input, k=2)
+        # append the scores and responses of the documents to the lists
+        scores.append(docs[0][1])  # Access the similarity score of the first document
+        responses.append(docs[0][0].page_content)
 
-# Compare the scores and select the best one as the answer
-best_score = max(scores)
-best_index = scores.index(best_score)
-best_response = responses[best_index]
+
+    # compare the scores and select the best one as the answer
+    best_score = max(scores)
+    best_index = scores.index(best_score)
+    best_response = responses[best_index]
 
 
     # display the file name or path of the document that contains the answer
