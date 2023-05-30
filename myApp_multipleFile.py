@@ -1,37 +1,39 @@
-# import necessary packages
-import sys; sys.path.append('src')
-import openai
-import os
-import re
-import json
-import PyPDF2
 import streamlit as st
-from pathlib import Path
-import faiss
+from streamlit_chat import message
+import pandas as pd
+# from llama_index.indices.struct_store import GPTPandasIndex
+# from llama_index import SimpleDirectoryReader, GPTSimpleVectorIndex
+import os
+import json
 import pickle
-from bs4 import BeautifulSoup
-from urllib.parse import urlsplit, urljoin
-import requests
-import mimetypes
 from abc import ABC, abstractmethod
 from typing import List
-from src.parse_document import PdfParser
-from src.indexer import FaissIndexer
-from src.openai_embeddings import OpenAIEmbeddings, ChatOpenAI
-# from langchain.vectorstores import FAISS as BaseFAISS
-# from langchain.schema import AIMessage, HumanMessage, SystemMessage
-# from langchain.document_loaders import (
-#     PyPDFLoader,
-#     CSVLoader,
-#     UnstructuredWordDocumentLoader,
-#     WebBaseLoader,
-# )
+from langchain.agents import create_pandas_dataframe_agent
+import requests
+import mimetypes
+from bs4 import BeautifulSoup
+import tiktoken
+from urllib.parse import urljoin, urlsplit
+from langchain.llms import OpenAI
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.vectorstores import FAISS as BaseFAISS
+from langchain.chat_models import ChatOpenAI
+from langchain.schema import AIMessage, HumanMessage, SystemMessage
+from langchain.document_loaders import (
+    PyPDFLoader,
+    CSVLoader,
+    UnstructuredWordDocumentLoader,
+    WebBaseLoader,
+)
 
-"""
-This is a Streamlit-based application that works as a chatbot for conversing with data from PDF files.
-"""
 
-# class definitions
+
+def count_tokens(text, model="gpt-3.5-turbo"):
+    encoding = tiktoken.get_encoding("cl100k_base")
+    encoding = tiktoken.encoding_for_model(model)
+    tokens = len(encoding.encode(text))
+    return tokens
+
 
 class DocumentLoader(ABC):
     @abstractmethod
@@ -39,10 +41,10 @@ class DocumentLoader(ABC):
         pass
 
 
-# class FAISS(BaseFAISS):
-#     def save(self, file_path):
-#         with open(file_path, "wb") as f:
-#             pickle.dump(self, f)
+class FAISS(BaseFAISS):
+    def save(self, file_path):
+        with open(file_path, "wb") as f:
+            pickle.dump(self, f)
 
     @staticmethod
     def load(file_path):
@@ -82,43 +84,49 @@ class URLHandler:
 
         return all_links
 
-# setting page title and header
-#st.set_page_config(page_title="Data Chat", page_icon=':robot_face:')
-st.markdown("<h1 stype='text-align:center;'>Data Chat</h1>", unsafe_allow_html=True)
-st.markdown("<h2 stype='text-align:center;'>A Chatbot for conversing with your data</h2>", unsafe_allow_html=True)
+
+# Set page title and header
+st.set_page_config(page_title="PDF Chat", page_icon=':robot_face:')
+st.markdown("<h1 style='text-align:center;'>PDF Chat</h1>", unsafe_allow_html=True)
+st.markdown("<h2 style='text-align:center;'>Converse with your PDF files</h2>", unsafe_allow_html=True)
 
 # set API Key
 key = st.text_input('OpenAI API Key','',type='password')
-openai.api_key = key
+os.environ['OPENAPI_API_KEY'] = key
 os.environ['OPENAI_API_KEY'] = key
+
 
 # initialize session state variables
 if 'generated' not in st.session_state:
-    st.session_state['generated'] = []
+    st.session_state['generated']=[]
 
 if 'past' not in st.session_state:
-    st.session_state['past'] = []
+    st.session_state['past']=[]
 
 if 'messages' not in st.session_state:
-    st.session_state['messages'] = [
-        {"role": "system", "content": "You are a helpful assistant."}
+    st.session_state['messages']=[
+        {"role":"DataChat","content":"You are a helpful bot."}
     ]
 
 if 'model_name' not in st.session_state:
-    st.session_state['model_name'] = []
+    st.session_state['model_name']=[]
 
 if 'cost' not in st.session_state:
-    st.session_state['cost'] = []
+    st.session_state['cost']=[]
 
 if 'total_tokens' not in st.session_state:
-    st.session_state['total_tokens'] = []
+    st.session_state['total_tokens']=[]
 
 if 'total_cost' not in st.session_state:
-    st.session_state['total_cost'] = 0.0
+    st.session_state['total_cost']=0.0
+
+# Initialize session state variables
+if 'pdf_files' not in st.session_state:
+    st.session_state['pdf_files'] = []
 
 # sidebar - let user choose model, show total cost of current conversation, and let user clear the current conversation
 st.sidebar.title("Sidebar")
-model_name = st.sidebar.radio("Choose a model:", ("GPT-3.5", "GPT-4"))
+model_name = st.sidebar.radio("Choose a model:",("GPT-3.5", "GPT-4"))
 counter_placeholder = st.sidebar.empty()
 counter_placeholder.write(f"Total cost of this conversation: ${st.session_state['total_cost']:.5f}")
 clear_button = st.sidebar.button("Clear Conversation", key="clear")
@@ -142,29 +150,33 @@ if clear_button:
     st.session_state['total_cost'] = 0.0
     st.session_state['total_tokens'] = []
     counter_placeholder.write(f"Total cost of this conversation: ${st.session_state['total_cost']:.5f}")
+        
+# def askQuestion():
+#     prompt = st.text_input("write your question:")
+#     response = index.query(prompt)
+#     st.write(response)
 
-
-
-# file uploading and processing
+#     # Get the last token usage
+#     last_token_usage = index.llm_predictor.last_token_usage
+#     st.write(f"last_token_usage={last_token_usage}")
 
 def save_uploadedfile(uploadedfile):
-     with open(os.path.join("data/dataset", uploadedfile.name), "wb") as f:
-         f.write(uploadedfile.getbuffer())
-     return "data/dataset/" + uploadedfile.name
+    with open(os.path.join("data/dataset", uploadedfile.name), "wb") as f:
+        f.write(uploadedfile.getbuffer())
+    return "data/dataset/" + uploadedfile.name
 
 
-# def generate_response(index, prompt):
-#     st.session_state['messages'].append({"role": "user", "content": prompt})
+def generate_response(index,prompt):
+    st.session_state['messages'].append({"role":"user","content":prompt})
 
-#     response = index.query(prompt)
-#     st.session_state['messages'].append({"role": "DataChat", "content": response})
+    response = index.query(prompt)
+    st.session_state['messages'].append({"role":"DataChat","content":response})
 
-#     # last_token_usage = index.llm_predictor.last_token_usage
-#     last_token_usage = 0.0
-#     # print(f"last_token_usage={last_token_usage}")
+    #last_token_usage = index.llm_predictor.last_token_usage
+    last_token_usage = 0.0
+    #print(f"last_token_usage={last_token_usage}")
 
-#     return response, last_token_usage
-
+    return response,  last_token_usage
 
 def get_loader(file_path_or_url):
     if file_path_or_url.startswith("http://") or file_path_or_url.startswith("https://"):
@@ -183,20 +195,25 @@ def get_loader(file_path_or_url):
         else:
             raise ValueError(f"Unsupported file type: {mime_type}")
 
-
-def train_or_load_model(train, faiss_obj_path, file_paths, embeddings):
+def train_or_load_model(train, faiss_obj_path, file_path, idx_name):
     if train:
-        pages = [] # a list to store all the pages from all the files
-        for file_path in file_paths: # loop through the file paths
-            loader = get_loader(file_path) # get the loader for each file
-            pages.extend(loader.load_and_split()) # load and split the pages and append them to the list
+        loader = get_loader(file_path)
+        pages = loader.load_and_split()
 
-        faiss_index = FAISS.from_documents(pages, embeddings) # create a single FAISS index from all the pages
-        faiss_index.save(faiss_obj_path) # save the FAISS index to a specific location
+        # if os.path.exists(faiss_obj_path):
+        #     faiss_index = FAISS.load(faiss_obj_path)
+        #     new_embeddings = faiss_index.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
+        #     new_embeddings.save(faiss_obj_path)
+        # else:
+        #     # faiss_index = FAISS.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
+        #     faiss_index = FAISS.from_documents(pages, embeddings)
+        faiss_index = FAISS.from_documents(pages, embeddings)
 
-        return FAISS.load(faiss_obj_path) # return the loaded FAISS index
+        faiss_index.save(faiss_obj_path)
+
+        return FAISS.load(faiss_obj_path)
     else:
-        return FAISS.load(faiss_obj_path) # return the loaded FAISS index
+        return FAISS.load(faiss_obj_path)
 
 
 def answer_questions(faiss_index, user_input):
@@ -208,48 +225,60 @@ def answer_questions(faiss_index, user_input):
                     'the info. Never break character.')
     ]
 
-    # while True:
-        # question = input("Ask a question (type 'stop' to end): ")
-        # if question.lower() == "stop":
-        #     break
+    docs = faiss_index.similarity_search(query=user_input, k=2)
 
-    docs = faiss_index.similarity_search(query=user_input, k=2) # search for the most similar documents based on the user input
+    main_content = user_input + "\n\n"
+    for doc in docs:
+        main_content += doc.page_content + "\n\n"
 
-    main_content = user_input + "\n\n" # create a main content string with the user input
-    for doc in docs: # loop through the matched documents
-        main_content += doc.page_content + "\n\n" # append the page content to the main content string
+    messages.append(HumanMessage(content=main_content))
+    ai_response = chat(messages).content
+    messages.pop()
+    messages.append(HumanMessage(content=user_input))
+    messages.append(AIMessage(content=ai_response))
 
-    messages.append(HumanMessage(content=main_content)) # append a human message with the main content to the messages list
-    ai_response = chat(messages).content # generate an AI response using the chat model and the messages list
-    messages.pop() # remove the last message from the list
-    messages.append(HumanMessage(content=user_input)) # append a human message with the user input to the list
-    messages.append(AIMessage(content=ai_response)) # append an AI message with the AI response to the list
+    return ai_response
 
-    return ai_response # return the AI response
 
-# allow users to upload multiple PDF files using the st.file_uploader function
-uploaded_files = st.file_uploader("Choose one or more PDF files", type="pdf", accept_multiple_files=True)
+# def main():
+#     faiss_obj_path = "/Users/puneetsachdeva/Downloads/langchain-chat-main/models/test.pickle"
+#     file_path = "/Users/puneetsachdeva/Downloads/langchain-chat-main/data/mlb_players.csv"
+#     index_name = "test"
 
+#     train = int(input("Do you want to train the model? (1 for yes, 0 for no): "))
+#     faiss_index = train_or_load_model(train, faiss_obj_path, file_path, index_name)
+#     answer_questions(faiss_index)
+
+
+df=None
+# Upload PDF files
+uploaded_files = st.file_uploader("Choose PDF files", accept_multiple_files=True, type="pdf")
 if uploaded_files:
-    file_paths = [] # a list to store all the file paths of uploaded files
-    for uploaded_file in uploaded_files: # loop through the uploaded files
-        file_path = save_uploadedfile(uploaded_file) # save each file to a specific location and get its path
-        file_paths.append(file_path) # append each file path to the list
-        # initialize OpenAI embeddings and chat model
-        embeddings = OpenAIEmbeddings('gpt-3.5-turbo', openai_api_key=key)
-        print(embeddings)
-    #chat = ChatOpenAI()
-    #chat = ChatOpenAI(temperature=0, openai_api_key=key , model_name=model)
-        chat = ChatOpenAI(openai_api_key=key , model_name=model, messages=embeddings.messages)
+    for uploaded_file in uploaded_files:
+        file_path = save_uploadedfile(uploaded_file)
+        st.session_state['pdf_files'].append(file_path)
 
-        faiss_obj_path = "models/all_files.pickle" # define the path to save or load the FAISS object for all files
-    
+    # Check if PDF files are uploaded
+if st.session_state['pdf_files']:
+    st.write(f"Number of uploaded PDF files: {len(st.session_state['pdf_files'])}")
 
-    #faiss_index = train_or_load_model(1, faiss_obj_path, file_paths) # train or load a single FAISS index for all files
-        embeddings = OpenAIEmbeddings('gpt-3.5-turbo', openai_api_key=key)
-        faiss_index = train_or_load_model(True, faiss_obj_path, file_paths, embeddings)
+    # Load PDF files and create chatbot
+    embeddings = OpenAIEmbeddings(openai_api_key=key)
+    chat = ChatOpenAI(temperature=0, openai_api_key=key)
+    faiss_obj_path = "models/test.pickle"
+    index_name = "test"
+    faiss_index = BaseFAISS.from_documents([], embeddings)
+
+    for file_path in st.session_state['pdf_files']:
+        pdf_loader = PyPDFLoader(file_path)
+        pages = pdf_loader.load_and_split()
+        faiss_index.add_documents(pages)
+
+    faiss_index.save(faiss_obj_path)
+    faiss_index = FAISS.load(faiss_obj_path)
 else:
     st.write("Incompatible file type")
+
 
 st.session_state['generated'] = []
 st.session_state['past'] = []
@@ -267,58 +296,49 @@ response_container = st.container()
 # container for text box
 container = st.container()
 
-with container:
+# documents = SimpleDirectoryReader('data/dataset').load_data()
+# index = GPTSimpleVectorIndex.from_documents(documents)
+
+# Chatbot interface
+with st.container():
     with st.form(key='my_form', clear_on_submit=True):
-        user_input = st.text_area("You:", key='input', height=100) # create a text area for user input
-        submit_button = st.form_submit_button(label='Send') # create a button for submitting user input
+        user_input = st.text_area("You:", key='input', height=100)
+        submit_button = st.form_submit_button(label='Send')
 
-    if submit_button and user_input: # if user input is submitted
-        output = answer_questions(faiss_index, user_input)  # use the answer_questions function to generate a response based on user input and FAISS index
-        response = chat.generate_response(user_input)
-        total_tokens = 0 # set total tokens to zero (this can be changed if token usage is available)
-        st.session_state['past'].append(user_input) # append user input to session state variable 'past'
-        st.session_state['generated'].append(output) # append generated output to session state variable 'generated'
-        st.session_state['model_name'].append(model_name)  # append model name to session state variable 'model_name'
-        st.session_state['total_tokens'].append(total_tokens)  # append total tokens to session state variable 'total_tokens'
+        if submit_button:
+            if uploaded_files:
+                # Iterate over uploaded PDF files
+                for file in uploaded_files:
+                    if file["type"] == "application/pdf":
+                        # Save the uploaded PDF file
+                        with open(os.path.join(UPLOAD_DIR, file["name"]), "wb") as f:
+                            f.write(file["content"])
 
-        # from https://openai.com/pricing#language-models
-        if model_name == "GPT-3.5":
-            cost = total_tokens * 0.002 / 1000
-        else:
-            cost = total_tokens * 0.002 / 1000
-        st.session_state['cost'].append(cost)  # append cost to session state variable 'cost'
-        st.session_state['total_cost'] += cost  # update total cost in session state variable 'total_cost'
+        if user_input:
+            # Check if user input is related to PDF files
+            ai_response = answer_questions(faiss_index, user_input)
 
-if st.session_state['generated']:  # if there are generated responses
-    with response_container:  # in response container
-        for i in range(len(st.session_state['generated'])):  # loop through each response
-            message(st.session_state["past"][i], is_user=True, key=str(i) + '_user')  # display user message using message function
-            message(st.session_state["generated"][i], key=str(i))  # display DataChat message using message function
+            # Display AI response
+            st.markdown("<hr/>", unsafe_allow_html=True)
+            st.write("AI Assistant:")
+            st.write(ai_response)
+            st.markdown("<hr/>", unsafe_allow_html=True)
+
+            # Calculate cost based on model and tokens
+            if model_name == "GPT-3.5":
+                cost = total_tokens * 0.002 / 1000
+            else:
+                cost = total_tokens * 0.002 / 1000
+
+            st.session_state['cost'].append(cost)
+            st.session_state['total_cost'] += cost
+
+if st.session_state['generated']:
+    #st.write(st.session_state['generated'])
+    with response_container:
+        for i in range(len(st.session_state['generated'])):
+            message(st.session_state["past"][i], is_user=True, key=str(i) + '_user')
+            message(st.session_state["generated"][i], key=str(i))
             st.write(
-                f"Model used: {st.session_state['model_name'][i]}; Number of tokens: {st.session_state['total_tokens'][i]}; Cost: ${st.session_state['cost'][i]:.5f}")  # display model name, token count and cost information
-            counter_placeholder.write(f"Total cost of this conversation: ${st.session_state['total_cost']:.5f}")  # update total cost in sidebar
-
-# function to display messages in a chat-like format
-def message(text, is_user=False, key=None):
-    if is_user:
-        color = "#008080"
-    else:
-        color = "#000000"
-
-    html_text = f"""
-    <div style="display:flex; flex-direction:row; margin-bottom:10px;">
-      <div style="width:50px; height:50px; border-radius:25px; background-color:{color}; margin-right:10px;"></div>
-      <div style="display:flex; flex-direction:column;">
-        <div style="font-size:16px; font-weight:bold; color:{color}; margin-bottom:5px;">{'You' if is_user else 'DataChat'}</div>
-        <div style="font-size:14px; color:#000000;">{text}</div>
-      </div>
-    </div>
-    """
-    return st.markdown(html_text, unsafe_allow_html=True, key=key)
-
-# main function to run the app (not needed since everything is already done in global scope)
-# def main():
-#     pass
-
-# if __name__ == "__main__":
-#     main()
+                f"Model used: {st.session_state['model_name'][i]}; Number of tokens: {st.session_state['total_tokens'][i]}; Cost: ${st.session_state['cost'][i]:.5f}")
+            counter_placeholder.write(f"Total cost of this conversation: ${st.session_state['total_cost']:.5f}")
