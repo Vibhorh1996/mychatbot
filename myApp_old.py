@@ -166,31 +166,40 @@ def train_or_load_model(train, faiss_obj_path, file_path, idx_name):
     else:
         return FAISS.load(faiss_obj_path)
 
-# define a function to answer questions from the FAISS index using the chat model
-def answer_questions(faiss_index, user_input):
-    messages = [
-        SystemMessage(
-            content='I want you to act as a document that I am having a conversation with. Your name is "AI '
-            'Assistant". You will provide me with answers from the given info. If the answer is not included, '
-            'say exactly "Hmm, I am not sure." and stop after that. Refuse to answer any question not about '
-            'the info. Never break character.'
-        )
-    ]
+def answer_questions(file_paths, user_input):
+    best_score = 0.0
+    best_response = ""
 
-    docs = faiss_index.similarity_search(query=user_input, k=2)
-    print(type(docs[0]), dir(docs[0]))
+    for file_path in file_paths:
+        # Load the document from file_path using appropriate loaders
+        loader = get_loader(file_path)
+        document = loader.load_and_split()
 
-    main_content = user_input + "\n\n"
-    for doc in docs:
-        main_content += doc.page_content + "\n\n"
+        # Concatenate the document content as a single string
+        document_content = "\n\n".join(document)
 
-    messages.append(HumanMessage(content=main_content))
-    ai_response = chat(messages).content
-    messages.pop()
-    messages.append(HumanMessage(content=user_input))
-    messages.append(AIMessage(content=ai_response))
+        # Generate an AI response for the user's query using the document content
+        messages = [
+            SystemMessage(
+                content='I want you to act as a document that I am having a conversation with. Your name is "AI '
+                        'Assistant". You will provide me with answers from the given info. If the answer is not included, '
+                        'say exactly "Hmm, I am not sure." and stop after that. Refuse to answer any question not about '
+                        'the info. Never break character.'
+            ),
+            HumanMessage(content=user_input),
+            AIMessage(content=document_content)
+        ]
 
-    return ai_response
+        ai_response = chat(messages).content
+
+        # Update the best score and response if a higher similarity is found
+        similarity_score = calculate_similarity(user_input, ai_response)
+        if similarity_score > best_score:
+            best_score = similarity_score
+            best_response = ai_response
+
+    return best_response
+
 
 # create an OpenAI object
 openai = OpenAI()
@@ -230,28 +239,36 @@ with container:
 # generate a response from the index or the agent based on the user input and append it to the session state messages
 if submit_button and user_input:
     st.session_state["messages"].append({"role": "user", "content": user_input})
+      # Call the modified answer_questions function
+    best_response = answer_questions(file_paths, user_input)
 
- # iterate over the faiss_index objects and perform a similarity search with the user input for each one
-    scores = []
-    responses = []
-    for faiss_index in faiss_indices:
-        docs = faiss_index.similarity_search(query=user_input, k=2)
-        # append the scores and responses of the documents to the lists
-        scores.append(docs[0][1])  # Access the similarity score of the first document
-        responses.append(docs[0][0].page_content)
-
-
-    # compare the scores and select the best one as the answer
-    best_score = max(scores)
-    best_index = scores.index(best_score)
-    best_response = responses[best_index]
-
-
-    # display the file name or path of the document that contains the answer
+    # Display the file name or path of the document that contains the answer
     st.write(f"Answer from: {file_paths[best_index]}")
 
-   # append the answer to the session state messages
+    # Append the answer to the session state messages
     st.session_state["messages"].append({"role": "DataChat", "content": best_response})
+
+ # iterate over the faiss_index objects and perform a similarity search with the user input for each one
+#     scores = []
+#     responses = []
+#     for faiss_index in faiss_indices:
+#         docs = faiss_index.similarity_search(query=user_input, k=2)
+#         # append the scores and responses of the documents to the lists
+#         scores.append(docs[0][1])  # Access the similarity score of the first document
+#         responses.append(docs[0][0].page_content)
+
+
+#     # compare the scores and select the best one as the answer
+#     best_score = max(scores)
+#     best_index = scores.index(best_score)
+#     best_response = responses[best_index]
+
+
+#     # display the file name or path of the document that contains the answer
+#     st.write(f"Answer from: {file_paths[best_index]}")
+
+#    # append the answer to the session state messages
+#     st.session_state["messages"].append({"role": "DataChat", "content": best_response})
 
    # generate an AI response from the messages using the chat model
     ai_response = chat(st.session_state["messages"]).content
