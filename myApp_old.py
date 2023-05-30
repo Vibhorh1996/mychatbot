@@ -372,19 +372,3 @@ if submit_button and user_input:
               counter_placeholder.write(
                   f"Total cost of this conversation: ${st.session_state['total_cost']:.5f}"
             )
-def upload_files():
-    uploaded_files = st.file_uploader("Upload PDF files", accept_multiple_files=True)
-    file_paths = []
-    for uploaded_file in uploaded_files:
-        with open(uploaded_file.name, "wb") as f:
-            f.write(uploaded_file.getbuffer())
-        file_paths.append(uploaded_file.name)
-        st.write("File path:", uploaded_file.name)
-    return file_paths
-def main():
-    file_paths = upload_files()
-    user_input = st.text_input("Enter your question")
-    if st.button("Send"):
-        best_response = answer_questions(file_paths, user_input)
-        st.text("AI response:")
-        st.write(best_response)
