@@ -184,7 +184,7 @@ openai = OpenAI()
 embeddings = OpenAIEmbeddings()
 
 # create a ChatOpenAI object
-chat = ChatOpenAI(openai, model)
+chat = ChatOpenAI()
 
 # create a list of file paths and a list of faiss_index objects
 file_paths = []
