@@ -178,21 +178,22 @@ def extract_text_from_pdfs(pdf_files):
 
     # Iterate over the list of PDF files
     for pdf_file in pdf_files:
-        # Open the PDF file in binary mode
-        with open(pdf_file, "rb") as f:
-            # Create a PDF reader object
-            pdf_reader = PyPDF2.PdfFileReader(f)
+        # Create a PyPDFLoader object with the file path
+        loader = PyPDFLoader(pdf_file)
 
-            # Initialize an empty string to store the text content of the PDF file
-            pdf_text = ""
+        # Load and split the PDF file into a list of documents
+        documents = loader.load_and_split()
 
-            # Iterate over the pages of the PDF file
-            for page in pdf_reader.pages:
-                # Extract the text from the page and append it to the pdf_text string
-                pdf_text += page.extractText()
+        # Initialize an empty string to store the text content of the PDF file
+        pdf_text = ""
 
-            # Append the pdf_text string to the text_content list
-            text_content.append(pdf_text)
+        # Iterate over the documents
+        for document in documents:
+            # Extract the page content from the document and append it to the pdf_text string
+            pdf_text += document.page_content
+
+        # Append the pdf_text string to the text_content list
+        text_content.append(pdf_text)
 
     # Return the text_content list
     return text_content
@@ -211,30 +212,34 @@ def vectorize(text, pdf_files):
     # Return the vector
     return vector
 
+
 def calculate_similarity(user_input, ai_response, document_content):
     # Convert the user input and the AI response into vectors
-    user_vector = vectorize(user_input, document_content) # pass the document content as the second argument
-    ai_vector = vectorize(ai_response, document_content) # pass the document content as the second argument
+    user_vector = vectorize(user_input, document_content)  # pass the document content as the second argument
+    ai_vector = vectorize(ai_response, document_content)  # pass the document content as the second argument
 
     # Calculate the cosine similarity between the vectors
     similarity = 1 - cosine(user_vector, ai_vector)
 
     # Return the similarity score
     return similarity
-    
+
+
 def answer_questions(file_paths, user_input):
     best_score = 0.0
     best_response = ""
 
     for file_path in file_paths:
-        # Load the document from file_path using PyPDF2
-        with open(file_path, "rb") as f:
-            document = PyPDF2.PdfFileReader(f)
+        # Create a PyPDFLoader object with the file path
+        loader = PyPDFLoader(file_path)
 
-        # Iterate over the pages of the document
-        for page in document.pages:
-            # Extract the text from the page
-            page_text = page.extractText()
+        # Load and split the PDF file into a list of documents
+        documents = loader.load_and_split()
+
+        # Iterate over the documents
+        for document in documents:
+            # Extract the page content from the document
+            page_text = document.page_content
 
             # Generate an AI response for the user's query using the page text
             messages = [
@@ -242,13 +247,13 @@ def answer_questions(file_paths, user_input):
                     content='You are a document named "AI Assistant". Answer from the info or say "Hmm, I am not sure." No other questions.'
                 ),
                 HumanMessage(content=user_input),
-                AIMessage(content=page_text) # pass the string value
+                AIMessage(content=page_text)  # pass the string value
             ]
 
             ai_response = chat(messages).content
 
             # Update the best score and response if a higher similarity is found
-            similarity_score = calculate_similarity(user_input, ai_response, document) # pass the document as the second argument
+            similarity_score = calculate_similarity(user_input, ai_response, document)  # pass the document as the second argument
 
             if similarity_score > best_score:
                 best_score = similarity_score
