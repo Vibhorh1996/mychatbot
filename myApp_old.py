@@ -15,7 +15,7 @@ import mimetypes
 import time
 from bs4 import BeautifulSoup
 import tiktoken
-import pdfplumber
+import PyPDF2
 from scipy.spatial.distance import cosine
 from sklearn.feature_extraction.text import TfidfVectorizer
 from urllib.parse import urljoin, urlsplit
@@ -172,9 +172,38 @@ def train_or_load_model(train, faiss_obj_path, file_path, idx_name):
 # Create a TF-IDF vectorizer object
 vectorizer = TfidfVectorizer()
 
-def vectorize(text, document_content):
-    # Fit the vectorizer on the document content
-    vectorizer.fit([doc.extract_text() if isinstance(doc, pdfplumber.page.Page) else doc.text for doc in document_content]) # use a conditional expression to get the text of each document
+def extract_text_from_pdfs(pdf_files):
+    # Initialize an empty list to store the text content of each PDF file
+    text_content = []
+
+    # Iterate over the list of PDF files
+    for pdf_file in pdf_files:
+        # Open the PDF file in binary mode
+        with open(pdf_file, "rb") as f:
+            # Create a PDF reader object
+            pdf_reader = PyPDF2.PdfFileReader(f)
+
+            # Initialize an empty string to store the text content of the PDF file
+            pdf_text = ""
+
+            # Iterate over the pages of the PDF file
+            for page in pdf_reader.pages:
+                # Extract the text from the page and append it to the pdf_text string
+                pdf_text += page.extractText()
+
+            # Append the pdf_text string to the text_content list
+            text_content.append(pdf_text)
+
+    # Return the text_content list
+    return text_content
+
+
+def vectorize(text, pdf_files):
+    # Extract the text content from the PDF files using our custom function
+    pdf_content = extract_text_from_pdfs(pdf_files)
+
+    # Fit the vectorizer on the PDF content
+    vectorizer.fit(pdf_content)
 
     # Transform the text into a TF-IDF vector
     vector = vectorizer.transform([text])
@@ -198,22 +227,22 @@ def answer_questions(file_paths, user_input):
     best_response = ""
 
     for file_path in file_paths:
-        # Load the document from file_path using appropriate loaders
-        loader = get_loader(file_path)
-        document = loader.load_and_split()
+        # Load the document from file_path using PyPDF2
+        with open(file_path, "rb") as f:
+            document = PyPDF2.PdfFileReader(f)
 
-        # Iterate over the paragraphs of the document
-        for paragraph in document:
-            # Convert the paragraph object into a string
-            paragraph_text = str(paragraph) # or paragraph.text
+        # Iterate over the pages of the document
+        for page in document.pages:
+            # Extract the text from the page
+            page_text = page.extractText()
 
-            # Generate an AI response for the user's query using the paragraph text
+            # Generate an AI response for the user's query using the page text
             messages = [
                 SystemMessage(
                     content='You are a document named "AI Assistant". Answer from the info or say "Hmm, I am not sure." No other questions.'
                 ),
                 HumanMessage(content=user_input),
-                AIMessage(content=paragraph_text) # pass the string value
+                AIMessage(content=page_text) # pass the string value
             ]
 
             ai_response = chat(messages).content
