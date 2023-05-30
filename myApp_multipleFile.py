@@ -160,6 +160,11 @@ if clear_button:
 #     last_token_usage = index.llm_predictor.last_token_usage
 #     st.write(f"last_token_usage={last_token_usage}")
 
+def generate_embedding(page_text, embeddings):
+    # Generate embedding for the given page text using OpenAIEmbeddings
+    embedding = embeddings.embed_text(page_text)
+    return embedding
+
 def save_uploadedfile(uploadedfile):
     with open(os.path.join("data/dataset", uploadedfile.name), "wb") as f:
         f.write(uploadedfile.getbuffer())
@@ -262,22 +267,30 @@ if uploaded_files:
 if st.session_state['pdf_files']:
     st.write(f"Number of uploaded PDF files: {len(st.session_state['pdf_files'])}")
 
-    # Load PDF files and create chatbot
+   # Load PDF files and create chatbot
     embeddings = OpenAIEmbeddings(openai_api_key=key)
     chat = ChatOpenAI(temperature=0, openai_api_key=key)
     faiss_obj_path = "models/test.pickle"
     index_name = "test"
     faiss_index = BaseFAISS.from_documents([], embeddings)
 
-    for file_path in st.session_state['pdf_files']:
-        pdf_loader = PyPDFLoader(file_path)
-        pages = pdf_loader.load_and_split()
-        faiss_index.add_documents(pages)
+   for file_path in st.session_state['pdf_files']:
+    pdf_loader = PyPDFLoader(file_path)
+    pages = pdf_loader.load_and_split()
 
-    faiss_index.save(faiss_obj_path)
-    faiss_index = FAISS.load(faiss_obj_path)
-else:
-    st.write("Incompatible file type")
+    # Generate embeddings for each page of the PDF
+    page_embeddings = []
+    for page in pages:
+        # Generate embedding for the page text
+        embedding = generate_embedding(page, embeddings)
+        page_embeddings.append(embedding)
+
+    faiss_index.add_documents(page_embeddings)
+
+faiss_index.save(faiss_obj_path)
+
+# Load the saved faiss_index object
+faiss_index = FAISS.load(faiss_obj_path)
 
 
 st.session_state['generated'] = []
