@@ -15,6 +15,7 @@ import mimetypes
 import time
 from bs4 import BeautifulSoup
 import tiktoken
+import pdfplumber
 from scipy.spatial.distance import cosine
 from sklearn.feature_extraction.text import TfidfVectorizer
 from urllib.parse import urljoin, urlsplit
@@ -173,7 +174,7 @@ vectorizer = TfidfVectorizer()
 
 def vectorize(text, document_content):
     # Fit the vectorizer on the document content
-    vectorizer.fit([doc.text for doc in document_content]) # use a list comprehension to get the text of each document
+    vectorizer.fit([doc.extract_text() if isinstance(doc, pdfplumber.page.Page) else doc.text for doc in document_content]) # use a conditional expression to get the text of each document
 
     # Transform the text into a TF-IDF vector
     vector = vectorizer.transform([text])
