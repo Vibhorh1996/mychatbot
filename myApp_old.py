@@ -43,6 +43,11 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# set API Key
+key = st.text_input('OpenAI API Key','',type='password')
+os.environ['OPENAPI_API_KEY'] = key
+os.environ['OPENAI_API_KEY'] = key
+
 # create a sidebar
 st.sidebar.title("Sidebar")
 model_name = st.sidebar.radio("Choose a model:", ("GPT-3.5", "GPT-4"))
