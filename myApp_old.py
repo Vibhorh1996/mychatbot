@@ -173,7 +173,7 @@ vectorizer = TfidfVectorizer()
 
 def vectorize(text, document_content):
     # Fit the vectorizer on the document content
-    vectorizer.fit(document_content)
+    vectorizer.fit(document_content.text)
 
     # Transform the text into a TF-IDF vector
     vector = vectorizer.transform([text])
