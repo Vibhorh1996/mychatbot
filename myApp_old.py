@@ -178,6 +178,7 @@ def answer_questions(faiss_index, user_input):
     ]
 
     docs = faiss_index.similarity_search(query=user_input, k=2)
+    print(type(docs[0]), dir(docs[0]))
 
     main_content = user_input + "\n\n"
     for doc in docs:
