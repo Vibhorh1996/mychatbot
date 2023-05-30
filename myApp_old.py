@@ -114,6 +114,9 @@ class DocumentLoader(ABC):
 
 # define a subclass of BaseFAISS that implements methods for saving and loading the FAISS index
 class FAISS(BaseFAISS):
+    __module__ = __name__
+    __qualname__ = "FAISS"
+
     def save(self, file_path):
         with open(file_path, "wb") as f:
             pickle.dump(self, f)
