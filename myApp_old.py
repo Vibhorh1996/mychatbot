@@ -231,8 +231,6 @@ with container:
 if submit_button and user_input:
     st.session_state["messages"].append({"role": "user", "content": user_input})
 
-docs = faiss_index.similarity_search(query=user_input, k=2)
-
  # iterate over the faiss_index objects and perform a similarity search with the user input for each one
     scores = []
     responses = []
