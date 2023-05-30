@@ -230,14 +230,20 @@ with container:
 if submit_button and user_input:
     st.session_state["messages"].append({"role": "user", "content": user_input})
 
-    # iterate over the faiss_index objects and perform a similarity search with the user input for each one
-    ranks = []
-    responses = []
-    for faiss_index in faiss_indices:
-        docs = faiss_index.similarity_search(query=user_input, k=2)
-        # append the ranks and responses of the documents to the lists
-        ranks.append(docs[0].rank)
+   # iterate over the faiss_index objects and perform a similarity search with the user input for each one
+ranks = []
+responses = []
+for faiss_index in faiss_indices:
+    docs = faiss_index.similarity_search(query=user_input, k=2)
+    # check if the docs list is not empty and has at least two elements
+    if docs and len(docs) >= 2:
+        # append the score and page_content of the first document to the lists
+        ranks.append(docs[0].score)
         responses.append(docs[0].page_content)
+    else:
+        # append a large number and a default message to the lists
+        ranks.append(float("inf"))
+        responses.append("No matching document found.")
 
     # compare the ranks and select the lowest one as the best answer
     best_rank = min(ranks)
