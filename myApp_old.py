@@ -136,6 +136,16 @@ def get_loader(file_path):
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ]:
         return UnstructuredWordDocumentLoader(file_path)
+    elif mime_type is None:
+        # try to infer the format from the file content
+        with open(file_path, "rb") as f:
+            data = f.read()
+            if data.startswith(b"%PDF"):
+                return PyPDFLoader(file_path)
+            elif data.startswith(b"PK"):
+                return UnstructuredWordDocumentLoader(file_path)
+            else:
+                raise ValueError(f"Unsupported file format: {file_path}")
     else:
         raise ValueError(f"Unsupported file type: {mime_type}")
 
