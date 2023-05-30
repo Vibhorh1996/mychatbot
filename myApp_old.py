@@ -237,7 +237,7 @@ if submit_button and user_input:
     for faiss_index in faiss_indices:
         docs = faiss_index.similarity_search(query=user_input, k=2)
         # append the scores and responses of the documents to the lists
-        scores.append(docs[0].score[0])  # Access the first element of the 'score' attribute
+        scores.append(docs[0].score)  # Access the first element of the 'score' attribute
         responses.append(docs[0].page_content)
 
 
