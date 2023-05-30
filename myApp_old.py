@@ -181,10 +181,10 @@ def vectorize(text, document_content):
     # Return the vector
     return vector
 
-def calculate_similarity(user_input, ai_response):
+def calculate_similarity(user_input, ai_response, document_content):
     # Convert the user input and the AI response into vectors
-    user_vector = vectorize(user_input)
-    ai_vector = vectorize(ai_response)
+    user_vector = vectorize(user_input, document_content) # pass the document content as the second argument
+    ai_vector = vectorize(ai_response, document_content) # pass the document content as the second argument
 
     # Calculate the cosine similarity between the vectors
     similarity = 1 - cosine(user_vector, ai_vector)
@@ -218,7 +218,8 @@ def answer_questions(file_paths, user_input):
             ai_response = chat(messages).content
 
             # Update the best score and response if a higher similarity is found
-            similarity_score = calculate_similarity(user_input, ai_response)
+            similarity_score = calculate_similarity(user_input, ai_response, document) # pass the document as the second argument
+
             if similarity_score > best_score:
                 best_score = similarity_score
                 best_response = ai_response
