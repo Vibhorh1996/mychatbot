@@ -107,7 +107,7 @@ def save_uploadedfile(uploadedfile):
 uploaded_files = st.file_uploader(
     "Choose a file (PDF)", type="pdf", accept_multiple_files=True
 )
-pdf_files = [uploaded_file.name for uploaded_file in uploaded_files]
+pdf_files = [uploaded_file for uploaded_file in uploaded_files]
 
 # define a class for loading and splitting documents from different sources
 class DocumentLoader(ABC):
