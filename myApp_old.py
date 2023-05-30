@@ -181,7 +181,7 @@ def answer_questions(faiss_index, user_input):
 openai = OpenAI()
 
 # create an OpenAIEmbeddings object
-embeddings = OpenAIEmbeddings(model)
+embeddings = OpenAIEmbeddings()
 
 # create a ChatOpenAI object
 chat = ChatOpenAI(openai, model)
