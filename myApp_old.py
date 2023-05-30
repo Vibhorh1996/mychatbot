@@ -181,10 +181,7 @@ def answer_questions(file_paths, user_input):
         # Generate an AI response for the user's query using the document content
         messages = [
             SystemMessage(
-                content='I want you to act as a document that I am having a conversation with. Your name is "AI '
-                        'Assistant". You will provide me with answers from the given info. If the answer is not included, '
-                        'say exactly "Hmm, I am not sure." and stop after that. Refuse to answer any question not about '
-                        'the info. Never break character.'
+                content='You are a document named "AI Assistant". Answer from the info or say "Hmm, I am not sure." No other questions.'
             ),
             HumanMessage(content=user_input),
             AIMessage(content=document_content)
