@@ -176,7 +176,7 @@ def answer_questions(file_paths, user_input):
         document = loader.load_and_split()
 
         # Concatenate the document content as a single string
-        document_content = "\n\n".join(document)
+        document_content = "\n\n".join([str(doc) for doc in document]) # using list comprehension
 
         # Generate an AI response for the user's query using the document content
         messages = [
