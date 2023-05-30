@@ -15,7 +15,6 @@ import mimetypes
 import time
 from bs4 import BeautifulSoup
 import tiktoken
-from pypdf2 import *
 from scipy.spatial.distance import cosine
 from sklearn.feature_extraction.text import TfidfVectorizer
 from urllib.parse import urljoin, urlsplit
