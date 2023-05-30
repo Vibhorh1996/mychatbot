@@ -182,7 +182,7 @@ def extract_text_from_pdfs(pdf_files):
         loader = PyPDFLoader(pdf_file)
 
         # Load and split the PDF file into a list of documents
-        documents = loader.load_and_split()
+        documents = [save_uploadedfile(document) for document in loader.load_and_split()]
 
         # Initialize an empty string to store the text content of the PDF file
         pdf_text = ""
