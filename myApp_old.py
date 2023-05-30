@@ -177,13 +177,16 @@ def answer_questions(file_paths, user_input):
 
         # Iterate over the paragraphs of the document
         for paragraph in document:
-            # Generate an AI response for the user's query using the paragraph content
+            # Convert the paragraph object into a string
+            paragraph_text = str(paragraph) # or paragraph.text
+
+            # Generate an AI response for the user's query using the paragraph text
             messages = [
                 SystemMessage(
                     content='You are a document named "AI Assistant". Answer from the info or say "Hmm, I am not sure." No other questions.'
                 ),
                 HumanMessage(content=user_input),
-                AIMessage(content=paragraph)
+                AIMessage(content=paragraph_text) # pass the string value
             ]
 
             ai_response = chat(messages).content
