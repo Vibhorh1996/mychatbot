@@ -4,7 +4,6 @@ import pandas as pd
 # from llama_index.indices.struct_store import GPTPandasIndex
 # from llama_index import SimpleDirectoryReader, GPTSimpleVectorIndex
 import os
-import faiss
 import json
 import pickle
 from abc import ABC, abstractmethod
@@ -157,17 +156,11 @@ if clear_button:
 #     last_token_usage = index.llm_predictor.last_token_usage
 #     st.write(f"last_token_usage={last_token_usage}")
 
-def save_uploadedfile(uploaded_files):
-    file_paths = []
-    for uploaded_file in uploaded_files:
-        file_name = uploaded_file.name if hasattr(uploaded_file, 'name') else f"file_{len(file_paths)}"
-        with open(os.path.join("data/dataset", file_name), "wb") as f:
-            if isinstance(uploaded_file, bytes):
-                f.write(uploaded_file)
-            else:
-                f.write(uploaded_file.getbuffer())
-        file_paths.append("data/dataset/" + file_name)
-    return file_paths
+def save_uploadedfile(uploadedfile):
+     with open(os.path.join("data/dataset",uploadedfile.name),"wb") as f:
+         f.write(uploadedfile.getbuffer())
+     return "data/dataset/"+uploadedfile.name
+
 
 def generate_response(index,prompt):
     st.session_state['messages'].append({"role":"user","content":prompt})
@@ -198,22 +191,28 @@ def get_loader(file_path_or_url):
         else:
             raise ValueError(f"Unsupported file type: {mime_type}")
 
-def train_or_load_model(train, faiss_obj_path, file_paths, idx_names):
-    faiss_indices = []
-
-    for file_path, idx_name in zip(file_paths, idx_names):
-        loader = PyPDFLoader(file_path)
+def train_or_load_model(train, faiss_obj_path, file_path, idx_name):
+    if train:
+        loader = get_loader(file_path)
         pages = loader.load_and_split()
 
-        embeddings = OpenAIEmbeddings(openai_api_key=key)
+        # if os.path.exists(faiss_obj_path):
+        #     faiss_index = FAISS.load(faiss_obj_path)
+        #     new_embeddings = faiss_index.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
+        #     new_embeddings.save(faiss_obj_path)
+        # else:
+        #     # faiss_index = FAISS.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
+        #     faiss_index = FAISS.from_documents(pages, embeddings)
         faiss_index = FAISS.from_documents(pages, embeddings)
-        faiss_index.save(faiss_obj_path.format(idx_name))
 
-        faiss_indices.append(faiss_index)
+        faiss_index.save(faiss_obj_path)
 
-    return faiss_indices
+        return FAISS.load(faiss_obj_path)
+    else:
+        return FAISS.load(faiss_obj_path)
 
-def answer_questions(faiss_indices, user_input):
+
+def answer_questions(faiss_index, user_input):
     messages = [
         SystemMessage(
             content='I want you to act as a document that I am having a conversation with. Your name is "AI '
@@ -222,24 +221,25 @@ def answer_questions(faiss_indices, user_input):
                     'the info. Never break character.')
     ]
 
-    ai_responses = []
+    # while True:
+        # question = input("Ask a question (type 'stop' to end): ")
+        # if question.lower() == "stop":
+        #     break
 
-    for faiss_index in faiss_indices:
-        docs = faiss_index.similarity_search(query=user_input, k=2)
+    docs = faiss_index.similarity_search(query=user_input, k=2)
 
-        main_content = user_input + "\n\n"
-        for doc in docs:
-            main_content += doc.page_content + "\n\n"
+    main_content = user_input + "\n\n"
+    for doc in docs:
+        main_content += doc.page_content + "\n\n"
 
-        messages.append(HumanMessage(content=main_content))
-        ai_response = chat(messages).content
-        messages.pop()
-        messages.append(HumanMessage(content=user_input))
-        messages.append(AIMessage(content=ai_response))
+    messages.append(HumanMessage(content=main_content))
+    ai_response = chat(messages).content
+    messages.pop()
+    messages.append(HumanMessage(content=user_input))
+    messages.append(AIMessage(content=ai_response))
 
-        ai_responses.append(ai_response)
+    return ai_response
 
-    return ai_responses
 
 # def main():
 #     faiss_obj_path = "/Users/puneetsachdeva/Downloads/langchain-chat-main/models/test.pickle"
@@ -252,23 +252,26 @@ def answer_questions(faiss_indices, user_input):
 
 
 df=None
-uploaded_files = st.file_uploader("Choose file(s) (PDF)", accept_multiple_files=True)
-file_details = []
-file_paths = []
-idx_names = []
+uploaded_file = st.file_uploader("Choose a file (PDF / CSV)",accept_multiple_files=False)
+if uploaded_file is not None:
+    file_details = {"FileName":uploaded_file.name,"FileType":uploaded_file.type}
+    uploaded_path=save_uploadedfile(uploaded_file)
 
-if uploaded_files:
-    for i, uploaded_file in enumerate(uploaded_files):
-        file_details.append({"FileName": uploaded_file.name, "FileType": uploaded_file.type})
-        uploaded_path = save_uploadedfile(uploaded_file)
+    if uploaded_file.type == "text/csv":
+       df  = pd.read_csv(uploaded_file)
+       st.dataframe(df.head(10))
+       agent = create_pandas_dataframe_agent(OpenAI(temperature=0),df, verbose=True)
+    elif uploaded_file.type == "application/pdf":
+        embeddings = OpenAIEmbeddings(openai_api_key=key)
+        chat = ChatOpenAI(temperature=0, openai_api_key=key)
+        # train = int(input("Do you want to train the model? (1 for yes, 0 for no): "))
+        faiss_obj_path = "models/test.pickle"
+        index_name = "test"
+        faiss_index = train_or_load_model(1, faiss_obj_path, uploaded_path, index_name)
+        # answer_questions(faiss_index)
+    else:
+        st.write("Incompatible file type")
 
-        if uploaded_file.type == "application/pdf":
-            file_paths.append(uploaded_path)
-            idx_names.append(f"index_{i}")
-        else:
-            st.write(f"Incompatible file type: {uploaded_file.type}")
-
-faiss_indices = train_or_load_model(1, "models/{}.pickle", file_paths[0], idx_names)
 
 st.session_state['generated'] = []
 st.session_state['past'] = []
@@ -299,7 +302,7 @@ with container:
         if uploaded_file.type == "text/csv":
             output = agent.run(user_input)
         elif uploaded_file.type == "application/pdf":
-            output = answer_questions(faiss_indices, user_input)    
+            output = answer_questions(faiss_index, user_input)    
         #st.write(output)
         #total_tokens = last_token_count
         total_tokens = 0
