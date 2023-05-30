@@ -231,71 +231,65 @@ with container:
 if submit_button and user_input:
     st.session_state["messages"].append({"role": "user", "content": user_input})
 
-   # iterate over the faiss_index objects and perform a similarity search with the user input for each one
-ranks = []
-responses = []
-for faiss_index in faiss_indices:
-    docs = faiss_index.similarity_search(query=user_input, k=2)
-    # check if the docs list is not empty and has at least two elements
-    if docs and len(docs) >= 2:
-        # append the score and page_content of the first document to the lists
-        ranks.append(docs[0].score)
+    # iterate over the faiss_index objects and perform a similarity search with the user input for each one
+    scores = []
+    responses = []
+    for faiss_index in faiss_indices:
+        docs = faiss_index.similarity_search(query=user_input, k=2)
+        # append the scores and responses of the documents to the lists
+        scores.append(docs[0].score)
         responses.append(docs[0].page_content)
-    else:
-        # append a large number and a default message to the lists
-        ranks.append(float("inf"))
-        responses.append("No matching document found.")
 
-    # compare the ranks and select the lowest one as the best answer
-    best_rank = min(ranks)
-    best_index = ranks.index(best_rank)
+    # compare the scores and select the best one as the answer
+    best_score = max(scores)
+    best_index = scores.index(best_score)
     best_response = responses[best_index]
 
     # display the file name or path of the document that contains the answer
     st.write(f"Answer from: {file_paths[best_index]}")
 
-    # append the answer to the session state messages
+   # append the answer to the session state messages
     st.session_state["messages"].append({"role": "DataChat", "content": best_response})
 
-    # generate an AI response from the messages using the chat model
+   # generate an AI response from the messages using the chat model
     ai_response = chat(st.session_state["messages"]).content
 
-    # append the user input and the AI response to the session state messages
+   # append the user input and the AI response to the session state messages
     st.session_state["messages"].append({"role": "user", "content": user_input})
     st.session_state["messages"].append({"role": "AI Assistant", "content": ai_response})
 
-    # append the user input and the AI response to the session state past and generated lists
+   # append the user input and the AI response to the session state past and generated lists
     st.session_state["past"].append(user_input)
     st.session_state["generated"].append(ai_response)
 
-    # get the last token usage from the chat model
+   # get the last token usage from the chat model
     last_token_usage = chat.last_token_usage
 
-    # append the model name and the last token usage to the session state model_name and total_tokens lists
+   # append the model name and the last token usage to the session state model_name and total_tokens lists
     st.session_state["model_name"].append(model_name)
     st.session_state["total_tokens"].append(last_token_usage)
 
-    # calculate the cost of the response based on the model name and the last token usage
+   # calculate the cost of the response based on the model name and the last token usage
     if model_name == "GPT-3.5":
-        cost = last_token_usage * 0.00000006
+      cost = last_token_usage * 0.00000006
     else:
-        cost = last_token_usage * 0.00000012
+      cost = last_token_usage * 0.00000012
 
-    # append the cost to the session state cost list
+   # append the cost to the session state cost list
     st.session_state["cost"].append(cost)
 
-    # update the total cost in the session state
+   # update the total cost in the session state
     st.session_state["total_cost"] += cost
 
-    # display the chat history and the text box using streamlit widgets
+   # display the chat history and the text box using streamlit widgets
     if st.session_state["generated"]:
-        with response_container:
-            for i in range(len(st.session_state["generated"])):
-                message(st.session_state["past"][i], is_user=True, key=str(i) + "_user")
-                message(st.session_state["generated"][i], key=str(i))
-                st.write(
-                    f"Model used: {st.session_state['model_name'][i]}; Number of tokens: {st.session_state['total_tokens'][i]}; Cost: ${st.session_state['cost'][i]:.5f}"
-                )
-                counter_placeholder.write(
-                    f"Total cost of this conversation: ${st.session_state['total_cost']:.5f}"
-                )
+      with response_container:
+          for i in range(len(st.session_state["generated"])):
+              message(st.session_state["past"][i], is_user=True, key=str(i) + "_user")
+              message(st.session_state["generated"][i], key=str(i))
+              st.write(
+                  f"Model used: {st.session_state['model_name'][i]}; Number of tokens: {st.session_state['total_tokens'][i]}; Cost: ${st.session_state['cost'][i]:.5f}"
+            )
+              counter_placeholder.write(
+                  f"Total cost of this conversation: ${st.session_state['total_cost']:.5f}"
+            )
