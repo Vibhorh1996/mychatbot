@@ -231,17 +231,17 @@ if submit_button and user_input:
     st.session_state["messages"].append({"role": "user", "content": user_input})
 
     # iterate over the faiss_index objects and perform a similarity search with the user input for each one
-    scores = []
+    ranks = []
     responses = []
     for faiss_index in faiss_indices:
         docs = faiss_index.similarity_search(query=user_input, k=2)
-        # append the scores and responses of the documents to the lists
-        scores.append(docs[0].score)
+        # append the ranks and responses of the documents to the lists
+        ranks.append(docs[0].rank)
         responses.append(docs[0].page_content)
 
-    # compare the scores and select the best one as the answer
-    best_score = max(scores)
-    best_index = scores.index(best_score)
+    # compare the ranks and select the lowest one as the best answer
+    best_rank = min(ranks)
+    best_index = ranks.index(best_rank)
     best_response = responses[best_index]
 
     # display the file name or path of the document that contains the answer
