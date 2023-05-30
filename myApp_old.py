@@ -234,11 +234,11 @@ if submit_button and user_input:
     # iterate over the faiss_index objects and perform a similarity search with the user input for each one
     scores = []
     responses = []
-   for faiss_index in faiss_indices:
-    docs = faiss_index.similarity_search(query=user_input, k=2)
-    # append the scores and responses of the documents to the lists
-    scores.append(docs[0][1])  # Access the similarity score of the first document
-    responses.append(docs[0][0].page_content)
+    for faiss_index in faiss_indices:
+        docs = faiss_index.similarity_search(query=user_input, k=2)
+        # append the scores and responses of the documents to the lists
+        scores.append(docs[0][1])  # Access the similarity score of the first document
+        responses.append(docs[0][0].page_content)
 
 
     # compare the scores and select the best one as the answer
