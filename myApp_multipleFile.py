@@ -3,7 +3,8 @@ import streamlit as st
 import pandas as pd
 import requests
 import pickle
-import PyPDF2
+from langchain.document_loaders import PyPDFLoader
+import openai
 from bs4 import BeautifulSoup
 from openai import api_key
 
@@ -26,11 +27,10 @@ pdf_text = []
 # Parsing the PDF files and extracting the text
 if uploaded_files:
     for file in uploaded_files:
-        pdf_reader = PyPDF2.PdfFileReader(file)
-        num_pages = pdf_reader.numPages
-        for page in range(num_pages):
-            page_obj = pdf_reader.getPage(page)
-            text = page_obj.extractText()
+        loader = PyPDFLoader(file)
+        pages = loader.load_and_split()
+        for page in pages:
+            text = page.page_content
             pdf_text.append(text)
 
 # Creating a text input for user query
