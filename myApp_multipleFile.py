@@ -27,6 +27,23 @@ def generate_response(input_text, model='gpt-3.5-turbo', max_tokens=50):
     )
     return response['choices'][0]['text'].strip()
 
+def upload_files():
+    uploaded_files = st.file_uploader('Upload PDF Files', type='pdf', accept_multiple_files=True)
+    return uploaded_files
+uploaded_files = upload_files()
+
+def parse_pdf(file):
+    pdf_reader = PyPDF2.PdfReader(file)
+    text = ''
+    for page in pdf_reader.pages:
+        text += page.extract_text()
+    return text
+parsed_texts = []
+for file in uploaded_files:
+    text = parse_pdf(file)
+    parsed_texts.append(text)
+
+
 def run_data_chat():
     # Set Streamlit app title
     st.title("Data Chat")
