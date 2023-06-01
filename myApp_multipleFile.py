@@ -8,7 +8,7 @@ import openai
 from bs4 import BeautifulSoup
 import tempfile
 from openai import api_key
-#from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 # Setting the OpenAI API key
 api_key = st.text_input("Please enter your OpenAI API key",'',type = 'password')
@@ -51,7 +51,7 @@ response = ""
 # Creating a variable to store the total cost of the conversation
 total_cost = 0
 
-# @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=5))
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=5))
 
 # Defining a function to generate responses using the OpenAI API
 def generate_response(query, model):
