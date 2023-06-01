@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 from openai import api_key
 
 # Setting the OpenAI API key
-api_key = st.text_input("Please enter your OpenAI API key")
+api_key = st.text_input("Please enter your OpenAI API key",'',type = 'password')
 openai.api_key = api_key
 
 # Creating a list of available language models
