@@ -7,6 +7,7 @@ import os
 import re
 import json
 import openai
+import pypdf2
 
 # Set your OpenAI API key here
 #OPENAI_API_KEY = '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'
