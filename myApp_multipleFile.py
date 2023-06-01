@@ -6,6 +6,7 @@ import pickle
 from langchain.document_loaders import PyPDFLoader
 import openai
 from bs4 import BeautifulSoup
+import tempfile
 from openai import api_key
 
 # Setting the OpenAI API key
@@ -27,7 +28,14 @@ pdf_text = []
 # Parsing the PDF files and extracting the text
 if uploaded_files:
     for file in uploaded_files:
-        loader = PyPDFLoader(file)
+        # Creating a temporary file
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            # Writing the contents of the UploadedFile object to the temporary file
+            temp_file.write(file.read())
+            # Getting the file path of the temporary file
+            temp_file_path = temp_file.name
+        # Passing the file path to the PyPDFLoader class
+        loader = PyPDFLoader(temp_file_path)
         pages = loader.load_and_split()
         for page in pages:
             text = page.page_content
