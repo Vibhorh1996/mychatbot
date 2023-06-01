@@ -8,6 +8,7 @@ import openai
 from bs4 import BeautifulSoup
 import tempfile
 from openai import api_key
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 # Setting the OpenAI API key
 api_key = st.text_input("Please enter your OpenAI API key",'',type = 'password')
@@ -72,7 +73,11 @@ def generate_response(query, model):
 
     # Appending the user query to the prompt text
     prompt += "\n\nUser: " + query + "\nAI Assistant:"
-
+    
+    @retry(
+        stop=stop_after_attempt(3),  # Retry for a maximum of 3 attempts
+        wait=wait_exponential(multiplier=1, min=2, max=5)  # Exponential backoff with a base of 2
+    
     # Making an API request to generate a response
     result = openai.Completion.create(
         engine=model,
