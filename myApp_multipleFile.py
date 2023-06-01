@@ -6,10 +6,10 @@ import pickle
 import os
 import re
 import json
-from openai import OpenAIApi
+import openai
 
 # Set your OpenAI API key here
-OPENAI_API_KEY = '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'
+#OPENAI_API_KEY = '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'
 
 def generate_response(input_text, model='gpt-3.5-turbo', max_tokens=50):
     api = OpenAIApi(OPENAI_API_KEY)
