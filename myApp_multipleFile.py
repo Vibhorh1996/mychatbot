@@ -43,7 +43,6 @@ for file in uploaded_files:
     text = parse_pdf(file)
     parsed_texts.append(text)
 
-
 def run_data_chat():
     # Set Streamlit app title
     st.title("Data Chat")
@@ -109,5 +108,6 @@ def run_data_chat():
             # Clear conversation history
             conversation_history = []
 
+            
 if __name__ == '__main__':
     run_data_chat()
