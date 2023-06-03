@@ -1,24 +1,100 @@
-# Importing the required libraries
 import streamlit as st
+from streamlit_chat import message
 import pandas as pd
-import requests
+# from llama_index.indices.struct_store import GPTPandasIndex
+# from llama_index import SimpleDirectoryReader, GPTSimpleVectorIndex
+import os
+import json
 import pickle
-from langchain.document_loaders import PyPDFLoader
-import openai
+from abc import ABC, abstractmethod
+from typing import List
+from langchain.agents import create_pandas_dataframe_agent
+import requests
+import mimetypes
 from bs4 import BeautifulSoup
-import tempfile
-from openai import api_key
-from tenacity import retry, stop_after_attempt, wait_exponential
+import tiktoken
+from urllib.parse import urljoin, urlsplit
+from langchain.llms import OpenAI
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.vectorstores import FAISS as BaseFAISS
+from langchain.chat_models import ChatOpenAI
+from langchain.schema import AIMessage, HumanMessage, SystemMessage
+from langchain.document_loaders import (
+    PyPDFLoader,
+    CSVLoader,
+    UnstructuredWordDocumentLoader,
+    WebBaseLoader,
+)
 
-# Setting the OpenAI API key
-api_key = st.text_input("Please enter your OpenAI API key",'',type = 'password')
-openai.api_key = api_key
 
-# # Creating a list of available language models
-# models = ["ada", "babbage", "curie", "davinci"]
 
-# # Creating a dropdown menu for model selection
-# model = st.selectbox("Please select a language model", models)
+def count_tokens(text, model="gpt-3.5-turbo"):
+    encoding = tiktoken.get_encoding("cl100k_base")
+    encoding = tiktoken.encoding_for_model(model)
+    tokens = len(encoding.encode(text))
+    return tokens
+
+
+class DocumentLoader(ABC):
+    @abstractmethod
+    def load_and_split(self) -> List[str]:
+        pass
+
+
+class FAISS(BaseFAISS):
+    def save(self, file_path):
+        with open(file_path, "wb") as f:
+            pickle.dump(self, f)
+
+    @staticmethod
+    def load(file_path):
+        with open(file_path, "rb") as f:
+            return pickle.load(f)
+
+
+class URLHandler:
+    @staticmethod
+    def is_valid_url(url):
+        parsed_url = urlsplit(url)
+        return bool(parsed_url.scheme) and bool(parsed_url.netloc)
+
+    @staticmethod
+    def extract_links(url):
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        links = []
+        for link in soup.find_all('a'):
+            href = link.get('href')
+            if href:
+                absolute_url = urljoin(url, href)
+                if URLHandler.is_valid_url(absolute_url) and (
+                        absolute_url.startswith("http://") or absolute_url.startswith("https://")):
+                    links.append(absolute_url)
+
+        return links
+
+    @staticmethod
+    def extract_links_from_websites(websites):
+        all_links = []
+
+        for website in websites:
+            links = URLHandler.extract_links(website)
+            all_links.extend(links)
+
+        return all_links
+
+
+# setting page title and header
+st.set_page_config(page_title="Data Chat", page_icon=':robot_face:')
+st.markdown("<h1 stype='text-align:center;'>Data Chat</h1>", unsafe_allow_html=True)
+st.markdown("<h2 stype='text-align:center;'>A Chatbot for conversing with your data</h2>", unsafe_allow_html=True)
+
+# set API Key
+key = st.text_input('OpenAI API Key','',type='password')
+os.environ['OPENAPI_API_KEY'] = key
+os.environ['OPENAI_API_KEY'] = key
+
 
 # initialize session state variables
 if 'generated' not in st.session_state:
@@ -70,162 +146,195 @@ if clear_button:
     st.session_state['total_cost'] = 0.0
     st.session_state['total_tokens'] = []
     counter_placeholder.write(f"Total cost of this conversation: ${st.session_state['total_cost']:.5f}")
-    
-# Creating a file uploader for PDF files
-uploaded_files = st.file_uploader("Please upload PDF files", type="pdf", accept_multiple_files=True)
+        
+# def askQuestion():
+#     prompt = st.text_input("write your question:")
+#     response = index.query(prompt)
+#     st.write(response)
 
-# Creating an empty list to store the PDF text
-pdf_text = []
+#     # Get the last token usage
+#     last_token_usage = index.llm_predictor.last_token_usage
+#     st.write(f"last_token_usage={last_token_usage}")
 
-# Parsing the PDF files and extracting the text
-if uploaded_files:
-    for file in uploaded_files:
-        # Creating a temporary file
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            # Writing the contents of the UploadedFile object to the temporary file
-            temp_file.write(file.read())
-            # Getting the file path of the temporary file
-            temp_file_path = temp_file.name
-        # Passing the file path to the PyPDFLoader class
-        loader = PyPDFLoader(temp_file_path)
+def save_uploadedfiles(uploaded_files):
+    file_paths = []
+    for uploaded_file in uploaded_files:
+        with open(os.path.join("data/dataset", uploaded_file.name), "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        file_paths.append("data/dataset/" + uploaded_file.name)
+    return file_paths
+
+
+def generate_response(index,prompt):
+    st.session_state['messages'].append({"role":"user","content":prompt})
+
+    response = index.query(prompt)
+    st.session_state['messages'].append({"role":"DataChat","content":response})
+
+    #last_token_usage = index.llm_predictor.last_token_usage
+    last_token_usage = 0.0
+    #print(f"last_token_usage={last_token_usage}")
+
+    return response,  last_token_usage
+
+def get_loader(file_path_or_url):
+    if file_path_or_url.startswith("http://") or file_path_or_url.startswith("https://"):
+        handle_website = URLHandler()
+        return WebBaseLoader(handle_website.extract_links_from_websites([file_path_or_url]))
+    else:
+        mime_type, _ = mimetypes.guess_type(file_path_or_url)
+
+        if mime_type == 'application/pdf':
+            return PyPDFLoader(file_path_or_url)
+        elif mime_type == 'text/csv':
+            return CSVLoader(file_path_or_url)
+        elif mime_type in ['application/msword',
+                           'application/vnd.openxmlformats-officedocument.wordprocessingml.document']:
+            return UnstructuredWordDocumentLoader(file_path_or_url)
+        else:
+            raise ValueError(f"Unsupported file type: {mime_type}")
+
+def train_or_load_model(train, faiss_obj_path, file_path, idx_name):
+    if train:
+        loader = get_loader(file_path)
         pages = loader.load_and_split()
-        for page in pages:
-            text = page.page_content
-            pdf_text.append(text)
 
-# Creating a text input for user query
-query = st.text_input("Please enter your query")
+        # if os.path.exists(faiss_obj_path):
+        #     faiss_index = FAISS.load(faiss_obj_path)
+        #     new_embeddings = faiss_index.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
+        #     new_embeddings.save(faiss_obj_path)
+        # else:
+        #     # faiss_index = FAISS.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
+        #     faiss_index = FAISS.from_documents(pages, embeddings)
+        faiss_index = FAISS.from_documents(pages, embeddings)
 
-# Creating an empty string to store the response
-response = ""
+        faiss_index.save(faiss_obj_path)
 
-# Creating a variable to store the total cost of the conversation
-total_cost = 0
+        return FAISS.load(faiss_obj_path)
+    else:
+        return FAISS.load(faiss_obj_path)
 
-@retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=5, max=15), reraise=True)
 
-# Defining a function to generate responses using the OpenAI API
-def generate_response(query, model):
-    global response
-    global total_cost
+def answer_questions(faiss_index, user_input):
+    messages = [
+        SystemMessage(
+            content='I want you to act as a document that I am having a conversation with. Your name is "AI '
+                    'Assistant". You will provide me with answers from the given info. If the answer is not included, '
+                    'say exactly "Hmm, I am not sure." and stop after that. Refuse to answer any question not about '
+                    'the info. Never break character.')
+    ]
 
-    # Pre-processing the query text
-    query = query.lower()
-    query = query.strip()
+    # while True:
+        # question = input("Ask a question (type 'stop' to end): ")
+        # if question.lower() == "stop":
+        #     break
 
-    # Checking if the query is empty or not
-    if query == "":
-        response = "Please enter a valid query"
-        return
+    docs = faiss_index.similarity_search(query=user_input, k=2)
 
-    # Creating the prompt text by concatenating the PDF text and the instructions
-    prompt = "\n".join(pdf_text)
-    prompt += "\n\n'''"
-    prompt += "\nI want you to act as a documents that I am having a conversation with. Your name is 'AI Assistant'. You will provide me with answers from the given info. If the answer is not included, say exactly 'Hmm, I am not sure.' and stop after that. Refuse to answer any question not about the info. Never break character."
-    prompt += "\n'''"
+    main_content = user_input + "\n\n"
+    for doc in docs:
+        main_content += doc.page_content + "\n\n"
 
-    # Appending the user query to the prompt text
-    prompt += "\n\nUser: " + query + "\nAI Assistant:"
+    messages.append(HumanMessage(content=main_content))
+    ai_response = chat(messages).content
+    messages.pop()
+    messages.append(HumanMessage(content=user_input))
+    messages.append(AIMessage(content=ai_response))
+
+    return ai_response
+
+
+# def main():
+#     faiss_obj_path = "/Users/puneetsachdeva/Downloads/langchain-chat-main/models/test.pickle"
+#     file_path = "/Users/puneetsachdeva/Downloads/langchain-chat-main/data/mlb_players.csv"
+#     index_name = "test"
+
+#     train = int(input("Do you want to train the model? (1 for yes, 0 for no): "))
+#     faiss_index = train_or_load_model(train, faiss_obj_path, file_path, index_name)
+#     answer_questions(faiss_index)
+
+
+df=None
+uploaded_files = st.file_uploader("Choose PDF files", accept_multiple_files=True)
+
+if uploaded_files is not None:
+    file_paths = save_uploadedfiles(uploaded_files)
     
-    # Making an API request to generate a response
-    result = openai.Completion.create(
-        model="gpt-3.5-turbo",
-        prompt=prompt,
-        max_tokens=100,
-        stop="\n",
-        temperature=0.5,
-        frequency_penalty=0.5,
-        presence_penalty=0.5,
-        logprobs=10,
-        echo=False,
-        n=1,  # Generate a single response
-        stream=False,  # Use stream=False for synchronous requests
-    )
+    for file_path in file_paths:
+        # Perform processing for each file
+        loader = get_loader(file_path)
+        pages = loader.load_and_split()
 
-     # Extracting the cost of the response from the result object
-    cost = result['usage']['total_tokens']
+        if loader.file_type == "text/csv":
+            df = pd.read_csv(file_path)
+            st.dataframe(df.head(10))
+            agent = create_pandas_dataframe_agent(OpenAI(temperature=0), df, verbose=True)
+        elif loader.file_type == "application/pdf":
+            embeddings = OpenAIEmbeddings(openai_api_key=key)
+            chat = ChatOpenAI(temperature=0, openai_api_key=key)
+            # train = int(input("Do you want to train the model? (1 for yes, 0 for no): "))
+            faiss_obj_path = "models/test.pickle"
+            index_name = "test"
+            faiss_index = train_or_load_model(1, faiss_obj_path, file_path, index_name)
+            # answer_questions(faiss_index)
+        else:
+            st.write("Incompatible file type")
 
-    # Updating the total cost of the conversation
-    total_cost += cost
 
-# Calling the generate_response function with the user query and model as arguments
-generate_response(query, model)
+st.session_state['generated'] = []
+st.session_state['past'] = []
+st.session_state['messages'] = [
+    {"role": "system", "content": "You are a helpful assistant."}
+]
+st.session_state['number_tokens'] = []
+st.session_state['model_name'] = []
+st.session_state['cost'] = []
+st.session_state['total_cost'] = 0.0
+st.session_state['total_tokens'] = []
 
-# Displaying the response to the user
-st.write("AI Assistant:", response)
+# container for chat history
+response_container = st.container()
+# container for text box
+container = st.container()
 
-# Displaying the total cost of the conversation
-st.write("Total cost of this conversation:", total_cost)
-# Creating a text input for web scraping
-url = st.text_input("Please enter a URL to scrape information from")
+# documents = SimpleDirectoryReader('data/dataset').load_data()
+# index = GPTSimpleVectorIndex.from_documents(documents)
 
-# Creating an empty string to store the scraped content
-scraped_content = ""
+with container:
+    with st.form(key='my_form', clear_on_submit=True):
+        user_input = st.text_area("You:", key='input', height=100)
+        submit_button = st.form_submit_button(label='Send')
 
-# Defining a function to scrape information from a web page
-def scrape_info(url):
-    global scraped_content
+    if submit_button and user_input:
+        # output, last_token_count = generate_response(index,user_input)
+        if uploaded_file.type == "text/csv":
+            output = agent.run(user_input)
+        elif uploaded_file.type == "application/pdf":
+            output = answer_questions(faiss_index, user_input)    
+        #st.write(output)
+        #total_tokens = last_token_count
+        total_tokens = 0
+        st.session_state['past'].append(user_input)
+        # st.session_state['generated'].append(output.response)
+        st.session_state['generated'].append(output)
+        st.session_state['model_name'].append(model_name)
+        st.session_state['total_tokens'].append(total_tokens)
 
-    # Checking if the URL is empty or not
-    if url == "":
-        scraped_content = "Please enter a valid URL"
-        return
+        # from https://openai.com/pricing#language-models
+        if model_name == "GPT-3.5":
+            cost = total_tokens * 0.002 / 1000
+        else:
+            #cost = (prompt_tokens * 0.03 + completion_tokens * 0.06) / 1000
+            cost = total_tokens * 0.002 / 1000
+        st.session_state['cost'].append(cost)
+        st.session_state['total_cost'] += cost
 
-    # Making an HTTP GET request to the URL
-    response = requests.get(url)
-
-    # Checking if the response status code is 200 or not
-    if response.status_code != 200:
-        scraped_content = "The URL is not accessible"
-        return
-
-    # Parsing the HTML content of the response using BeautifulSoup
-    soup = BeautifulSoup(response.content, "html.parser")
-
-    # Extracting the title of the web page
-    title = soup.find("title").text
-
-    # Extracting the text content of the web page
-    text = soup.get_text()
-
-    # Concatenating the title and text content
-    scraped_content = title + "\n" + text
-
-# Calling the scrape_info function with the URL as argument
-scrape_info(url)
-
-# Displaying the scraped content to the user
-st.write("Scraped content:", scraped_content)
-
-# Creating a text input for token counting
-text = st.text_input("Please enter a text string to count tokens")
-
-# Creating a variable to store the number of tokens
-num_tokens = 0
-
-# Defining a function to count tokens using a language model
-def count_tokens(text, model):
-    global num_tokens
-
-    # Checking if the text is empty or not
-    if text == "":
-        num_tokens = 0
-        return
-
-    # Making an API request to encode the text using a language model
-    result = openai.Encodings.create(
-        engine=model,
-        query=text,
-        max_tokens=100,
-        echo=False,
-        return_metadata=True,
-    )
-
-    # Extracting the number of tokens from the result object
-    num_tokens = result["metadata"]["tokens"]
-
-# Calling the count_tokens function with the text and model as arguments
-count_tokens(text, model)
-
-# Displaying the number of tokens to the user
-st.write("Number of tokens:", num_tokens)
+if st.session_state['generated']:
+    #st.write(st.session_state['generated'])
+    with response_container:
+        for i in range(len(st.session_state['generated'])):
+            message(st.session_state["past"][i], is_user=True, key=str(i) + '_user')
+            message(st.session_state["generated"][i], key=str(i))
+            st.write(
+                f"Model used: {st.session_state['model_name'][i]}; Number of tokens: {st.session_state['total_tokens'][i]}; Cost: ${st.session_state['cost'][i]:.5f}")
+            counter_placeholder.write(f"Total cost of this conversation: ${st.session_state['total_cost']:.5f}")
