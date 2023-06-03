@@ -137,14 +137,14 @@ def generate_response(query, model):
         frequency_penalty=0.5,
         presence_penalty=0.5,
         logprobs=10,
-        echo=False)
-        #return_metadata=True,
+        echo=False,
+        model="gpt-3.5-turbo",  # Use the appropriate model here
+        n=1,  # Generate a single response
+        stream=False,  # Use stream=False for synchronous requests
+    )
 
-    # Extracting the response text from the result object
-    response = result["choices"][0]["text"]
-
-    # Extracting the cost of the response from the result object
-    cost = result["metadata"]["cost"]
+     # Extracting the cost of the response from the result object
+    cost = result['usage']['total_tokens']
 
     # Updating the total cost of the conversation
     total_cost += cost
