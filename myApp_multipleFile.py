@@ -309,9 +309,9 @@ with container:
 
     if submit_button and user_input:
         # output, last_token_count = generate_response(index,user_input)
-        if uploaded_file.type == "text/csv":
+        if file_extension == "text/csv":
             output = agent.run(user_input)
-        elif uploaded_file.type == "application/pdf":
+        elif file_extension == "application/pdf":
             output = answer_questions(faiss_index, user_input)    
         #st.write(output)
         #total_tokens = last_token_count
