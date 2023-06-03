@@ -33,6 +33,20 @@ if model_name == "GPT-3.5":
 else:
     model = "gpt-4"
 
+# reset everything
+if clear_button:
+    st.session_state['generated'] = []
+    st.session_state['past'] = []
+    st.session_state['messages'] = [
+        {"role": "system", "content": "You are a helpful assistant."}
+    ]
+    st.session_state['number_tokens'] = []
+    st.session_state['model_name'] = []
+    st.session_state['cost'] = []
+    st.session_state['total_cost'] = 0.0
+    st.session_state['total_tokens'] = []
+    counter_placeholder.write(f"Total cost of this conversation: ${st.session_state['total_cost']:.5f}")
+    
 # Creating a file uploader for PDF files
 uploaded_files = st.file_uploader("Please upload PDF files", type="pdf", accept_multiple_files=True)
 
