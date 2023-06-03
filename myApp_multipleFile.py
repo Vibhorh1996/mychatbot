@@ -129,7 +129,7 @@ def generate_response(query, model):
     
     # Making an API request to generate a response
     result = openai.Completion.create(
-        engine=model,
+        model="gpt-3.5-turbo",
         prompt=prompt,
         max_tokens=100,
         stop="\n",
@@ -138,7 +138,6 @@ def generate_response(query, model):
         presence_penalty=0.5,
         logprobs=10,
         echo=False,
-        model="gpt-3.5-turbo",  # Use the appropriate model here
         n=1,  # Generate a single response
         stream=False,  # Use stream=False for synchronous requests
     )
