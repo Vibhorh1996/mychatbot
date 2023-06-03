@@ -20,6 +20,30 @@ openai.api_key = api_key
 # # Creating a dropdown menu for model selection
 # model = st.selectbox("Please select a language model", models)
 
+# initialize session state variables
+if 'generated' not in st.session_state:
+    st.session_state['generated']=[]
+
+if 'past' not in st.session_state:
+    st.session_state['past']=[]
+
+if 'messages' not in st.session_state:
+    st.session_state['messages']=[
+        {"role":"DataChat","content":"You are a helpful bot."}
+    ]
+
+if 'model_name' not in st.session_state:
+    st.session_state['model_name']=[]
+
+if 'cost' not in st.session_state:
+    st.session_state['cost']=[]
+
+if 'total_tokens' not in st.session_state:
+    st.session_state['total_tokens']=[]
+
+if 'total_cost' not in st.session_state:
+    st.session_state['total_cost']=0.0
+
 # sidebar - let user choose model, show total cost of current conversation, and let user clear the current conversation
 st.sidebar.title("Sidebar")
 model_name = st.sidebar.radio("Choose a model:",("GPT-3.5", "GPT-4"))
