@@ -41,15 +41,26 @@ class DocumentLoader(ABC):
         pass
 
 
-class FAISS(BaseFAISS):
+class FAISS:
+    def __init__(self):
+        self.indexes = {}
+
     def save(self, file_path):
         with open(file_path, "wb") as f:
-            pickle.dump(self, f)
+            pickle.dump(self.indexes, f)
 
     @staticmethod
     def load(file_path):
         with open(file_path, "rb") as f:
-            return pickle.load(f)
+            obj = FAISS()
+            obj.indexes = pickle.load(f)
+            return obj
+
+    def add_index(self, document_name, index):
+        self.indexes[document_name] = index
+
+    def get_index(self, document_name):
+        return self.indexes.get(document_name)
 
 
 class URLHandler:
@@ -162,6 +173,7 @@ def save_uploadedfiles(uploaded_files):
         with open(os.path.join("data/dataset", uploaded_file.name), "wb") as f:
             f.write(uploaded_file.getbuffer())
         file_paths.append("data/dataset/" + uploaded_file.name)
+        st.write(file_paths)
     return file_paths
 
 
@@ -170,6 +182,7 @@ def generate_response(index,prompt):
 
     response = index.query(prompt)
     st.session_state['messages'].append({"role":"DataChat","content":response})
+    st.write(response)
 
     #last_token_usage = index.llm_predictor.last_token_usage
     last_token_usage = 0.0
@@ -185,6 +198,7 @@ def get_loader(file_path_or_url):
         mime_type, _ = mimetypes.guess_type(file_path_or_url)
 
         if mime_type == 'application/pdf':
+            st.write(mime_type)
             return PyPDFLoader(file_path_or_url)
         elif mime_type == 'text/csv':
             return CSVLoader(file_path_or_url)
@@ -194,23 +208,23 @@ def get_loader(file_path_or_url):
         else:
             raise ValueError(f"Unsupported file type: {mime_type}")
 
-def train_or_load_model(train, faiss_obj_path, file_path, idx_name):
+def train_or_load_model(train, faiss_obj_path, file_paths, idx_name):
     if train:
-        loader = get_loader(file_path)
-        pages = loader.load_and_split()
+        loaders = [get_loader(file_path) for file_path in file_paths]
+        pages = []
+        for loader in loaders:
+            pages.extend(loader.load_and_split())
 
-        # if os.path.exists(faiss_obj_path):
-        #     faiss_index = FAISS.load(faiss_obj_path)
-        #     new_embeddings = faiss_index.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
-        #     new_embeddings.save(faiss_obj_path)
-        # else:
-        #     # faiss_index = FAISS.from_documents(pages, embeddings, index_name=idx_name, dimension=1536)
-        #     faiss_index = FAISS.from_documents(pages, embeddings)
-        faiss_index = FAISS.from_documents(pages, embeddings)
+        faiss_index = FAISS()
+        for i, page in enumerate(pages):
+            # Perform any necessary processing or feature extraction on the page
+
+            # Add the processed page to the FAISS index
+            faiss_index.add_index(f"document_{i}", page)
 
         faiss_index.save(faiss_obj_path)
 
-        return FAISS.load(faiss_obj_path)
+        return faiss_index
     else:
         return FAISS.load(faiss_obj_path)
 
@@ -224,13 +238,7 @@ def answer_questions(faiss_index, user_input):
                     'the info. Never break character.')
     ]
 
-    # while True:
-        # question = input("Ask a question (type 'stop' to end): ")
-        # if question.lower() == "stop":
-        #     break
-
     docs = faiss_index.similarity_search(query=user_input, k=2)
-
     main_content = user_input + "\n\n"
     for doc in docs:
         main_content += doc.page_content + "\n\n"
@@ -259,6 +267,7 @@ uploaded_files = st.file_uploader("Choose PDF files", accept_multiple_files=True
 
 if uploaded_files is not None:
     file_paths = save_uploadedfiles(uploaded_files)
+    st.write(file_paths)
     
     for file_path in file_paths:
         # Perform processing for each file
@@ -266,6 +275,7 @@ if uploaded_files is not None:
         pages = loader.load_and_split()
 
         file_extension = file_path.split(".")[-1].lower()
+        st.write(file_extension)
         
         if file_extension == "csv":
             df = pd.read_csv(file_path)
@@ -273,11 +283,14 @@ if uploaded_files is not None:
             agent = create_pandas_dataframe_agent(OpenAI(temperature=0), df, verbose=True)
         elif file_extension == "pdf":
             embeddings = OpenAIEmbeddings(openai_api_key=key)
+            st.write(embeddings)
             chat = ChatOpenAI(temperature=0, openai_api_key=key)
+            st.write(chat)
             # train = int(input("Do you want to train the model? (1 for yes, 0 for no): "))
             faiss_obj_path = "models/test.pickle"
             index_name = "test"
             faiss_index = train_or_load_model(1, faiss_obj_path, file_path, index_name)
+            st.write(faiss_index)
             # answer_questions(faiss_index)
         else:
             st.write("Incompatible file type")
@@ -311,8 +324,9 @@ with container:
         # output, last_token_count = generate_response(index,user_input)
         output = None
         if file_extension == "text/csv":
-            output = agent.run(user_input)
+            st.write(output)
         elif file_extension == "application/pdf":
+            st.write(output)
             output = answer_questions(faiss_index, user_input)    
         #st.write(output)
         #total_tokens = last_token_count
