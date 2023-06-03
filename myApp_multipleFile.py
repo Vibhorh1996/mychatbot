@@ -309,6 +309,7 @@ with container:
 
     if submit_button and user_input:
         # output, last_token_count = generate_response(index,user_input)
+        output = None
         if file_extension == "text/csv":
             output = agent.run(user_input)
         elif file_extension == "application/pdf":
