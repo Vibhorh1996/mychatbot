@@ -198,15 +198,13 @@ def get_loader(file_path_or_url):
         mime_type, _ = mimetypes.guess_type(file_path_or_url)
 
         if mime_type == 'application/pdf':
-            st.write(mime_type)
             return PyPDFLoader(file_path_or_url)
         elif mime_type == 'text/csv':
             return CSVLoader(file_path_or_url)
-        elif mime_type in ['application/msword',
-                           'application/vnd.openxmlformats-officedocument.wordprocessingml.document']:
+        elif mime_type in ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']:
             return UnstructuredWordDocumentLoader(file_path_or_url)
         else:
-            raise ValueError(f"Unsupported file type: {mime_type}")
+            raise ValueError(f"Unsupported file type: {mime_type or 'unknown'}")
 
 def train_or_load_model(train, faiss_obj_path, file_paths, idx_name):
     if train:
