@@ -265,11 +265,13 @@ if uploaded_files is not None:
         loader = get_loader(file_path)
         pages = loader.load_and_split()
 
-        if loader.file_type == "text/csv":
+        file_extension = file_path.split(".")[-1].lower()
+        
+        if file_extension == "csv":
             df = pd.read_csv(file_path)
             st.dataframe(df.head(10))
             agent = create_pandas_dataframe_agent(OpenAI(temperature=0), df, verbose=True)
-        elif loader.file_type == "application/pdf":
+        elif file_extension == "pdf":
             embeddings = OpenAIEmbeddings(openai_api_key=key)
             chat = ChatOpenAI(temperature=0, openai_api_key=key)
             # train = int(input("Do you want to train the model? (1 for yes, 0 for no): "))
