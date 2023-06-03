@@ -51,7 +51,7 @@ response = ""
 # Creating a variable to store the total cost of the conversation
 total_cost = 0
 
-@retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=65, max=150), reraise=True)
+@retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=5, max=15), reraise=True)
 
 # Defining a function to generate responses using the OpenAI API
 def generate_response(query, model):
