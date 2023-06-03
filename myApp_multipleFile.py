@@ -14,11 +14,24 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 api_key = st.text_input("Please enter your OpenAI API key",'',type = 'password')
 openai.api_key = api_key
 
-# Creating a list of available language models
-models = ["ada", "babbage", "curie", "davinci"]
+# # Creating a list of available language models
+# models = ["ada", "babbage", "curie", "davinci"]
 
-# Creating a dropdown menu for model selection
-model = st.selectbox("Please select a language model", models)
+# # Creating a dropdown menu for model selection
+# model = st.selectbox("Please select a language model", models)
+
+# sidebar - let user choose model, show total cost of current conversation, and let user clear the current conversation
+st.sidebar.title("Sidebar")
+model_name = st.sidebar.radio("Choose a model:",("GPT-3.5", "GPT-4"))
+counter_placeholder = st.sidebar.empty()
+counter_placeholder.write(f"Total cost of this conversation: ${st.session_state['total_cost']:.5f}")
+clear_button = st.sidebar.button("Clear Conversation", key="clear")
+
+# map model names to OpenAI model IDs
+if model_name == "GPT-3.5":
+    model = "gpt-3.5-turbo"
+else:
+    model = "gpt-4"
 
 # Creating a file uploader for PDF files
 uploaded_files = st.file_uploader("Please upload PDF files", type="pdf", accept_multiple_files=True)
