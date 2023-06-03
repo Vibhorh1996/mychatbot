@@ -86,9 +86,8 @@ def generate_response(query, model):
         frequency_penalty=0.5,
         presence_penalty=0.5,
         logprobs=10,
-        echo=False,
-        return_metadata=True,
-    )
+        echo=False)
+        #return_metadata=True,
 
     # Extracting the response text from the result object
     response = result["choices"][0]["text"]
